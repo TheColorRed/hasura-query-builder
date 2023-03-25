@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react",
+    "jsxFactory": "DOMcreateElement",
+    "noImplicitAny": false
+  },
+  "include": [
+    "components/**/*.tsx"
+  ],
+  "files": [
+    "src/index.ts",
+    "src/jsx.ts"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "browser-test",
+  "main": "dist/main.js",
+  "scripts": {
+    "start": "webpack serve",
+    "test": "node ./dist/main.js"
+  },
+  "dependencies": {
+    "@hasura-query-builder/core": "*",
+    "@hasura-query-builder/browser": "*",
+    "rxjs": "7.8.0"
+  },
+  "devDependencies": {
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1",
+    "ts-loader": "^9.4.1",
+    "circular-dependency-plugin": "^5.2.2",
+    "webpack-dev-server": "^4.11.1",
+    "html-webpack-plugin": "^5.5.0",
+    "https-browserify": "1.0.0",
+    "util": "^0.12.5"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "cSpell.words": [
+    "doesnt",
+    "fulltext",
+    "iregex",
+    "nilike",
+    "niregex",
+    "nlike",
+    "nregex",
+    "nsimilar",
+    "usrs"
+  ],
+  "typescript.tsdk": "node_modules\\typescript\\lib"
+}

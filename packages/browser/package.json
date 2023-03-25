@@ -1,0 +1,10 @@
+{
+  "name": "@hasura-query-builder/browser",
+  "main": "src/index",
+  "dependencies": {
+    "rxjs": "^7.8.0"
+  },
+  "peerDependencies": {
+    "@hasura-query-builder/core": "*"
+  }
+}

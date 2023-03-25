@@ -1,0 +1,20 @@
+{
+  "scripts": {
+    "start:node": "npm start -w tests/node",
+    "start:browser": "npm start -w tests/browser",
+    "test:node": "npm test -w tests/node",
+    "test:angular": "npm test -w tests/angular"
+  },
+  "workspaces": [
+    "tests/node",
+    "tests/angular",
+    "tests/browser",
+    "packages/browser",
+    "packages/core",
+    "packages/angular",
+    "packages/node"
+  ],
+  "devDependencies": {
+    "typescript": "5.0.1-rc"
+  }
+}

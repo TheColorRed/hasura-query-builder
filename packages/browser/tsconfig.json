@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@hasura-query-builder/core/debug": [
+        "../core/src/debug"
+      ]
+    },
+  },
+  "files": [
+    "src/index.ts"
+  ]
+}
