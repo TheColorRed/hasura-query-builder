@@ -15,4 +15,8 @@ export class Cursor implements Structure {
       type: 'cursor',
     };
   }
+
+  clone() {
+    return new Cursor(this.field, this.value);
+  }
 }

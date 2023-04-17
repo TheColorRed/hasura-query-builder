@@ -6,7 +6,7 @@ import { OnConflict } from './structures/sections/on-conflict';
 import { Direction, SortFields } from './structures/sections/order';
 import { CompoundPrimaryKeyKeyValues, CompoundPrimaryKeyNames, PrimaryKeyValue } from './structures/sections/primary';
 import { WhereGroup } from './structures/sections/where';
-import { HasuraWhere, HasuraWhereComparison, QueryBody } from './structures/structure';
+import { HasuraWhere, HasuraWhereComparison, QueryBody, QueryOptions } from './structures/structure';
 import { Table } from './table';
 
 /**
@@ -70,6 +70,7 @@ export abstract class BaseModel {
   private _buildType: BuildType = 'select';
   records?: InsertObjects | UpdateObjects;
   conflict?: OnConflict;
+  queryOptions?: QueryOptions;
   /** The type of build (`select`, `insert`, `update`, `delete`, `upsert`). */
   get buildType() {
     return this._buildType;
@@ -206,9 +207,9 @@ export abstract class BaseModel {
     const builder = args[0] instanceof Table ? args[0] : this.builder;
     const options = args[0] instanceof Table ? args[1] : args[0];
     if (builder.selects.length === 0 || typeof builder.selects === 'undefined') {
-      builder.select(...this.#getFields());
+      builder.select(...this.getFields());
     }
-    return new QueryBuilder({ tables: builder, type: this._buildType }).build(options);
+    return new QueryBuilder({ tables: builder, type: this._buildType, queryOptions: this.queryOptions }).build(options);
   }
   // /**
   //  * Sets a field to be updated or inserted.
@@ -367,7 +368,7 @@ export abstract class BaseModel {
     return this;
   }
 
-  #getFields() {
+  getFields() {
     const data: { fields: string[]; tables: Table[] } = { fields: [], tables: [] };
     Object.entries(this.fields).forEach(([key, builder]) => {
       if (typeof builder === 'string' || typeof builder === 'number' || typeof builder === 'boolean')

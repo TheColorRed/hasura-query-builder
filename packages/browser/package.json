@@ -2,7 +2,8 @@
   "name": "@hasura-query-builder/browser",
   "main": "src/index",
   "dependencies": {
-    "rxjs": "^7.8.0"
+    "rxjs": "^7.8.0",
+    "typescript": "^5.0.4"
   },
   "peerDependencies": {
     "@hasura-query-builder/core": "*"

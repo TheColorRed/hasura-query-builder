@@ -15,4 +15,8 @@ export class BatchSize implements Structure {
       type: 'batch',
     };
   }
+
+  clone() {
+    return new BatchSize(this.size);
+  }
 }

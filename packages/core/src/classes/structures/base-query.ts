@@ -1,6 +1,6 @@
 import { Table } from '../table';
 import { Where } from './sections/where';
-import { StructureResult } from './structure';
+import { BuildOptions, QueryBody, StructureResult } from './structure';
 
 export interface QueryParam {
   /** The param var for the query. */
@@ -125,5 +125,33 @@ export abstract class BaseQuery {
   protected compact(query: string, compact: boolean) {
     if (!compact) return query;
     return query.replace(/\s\s+/g, '');
+  }
+  /**
+   * Get the query body.
+   * @param prefix The prefix to add to the query.
+   * @param query The query to create.
+   * @param queryParamsVariables The variables to add to the query.
+   * @param options The options to use.
+   */
+  protected getQueryBody(
+    prefix: string,
+    query: (builder: Table, idx: number) => string,
+    queryParamsVariables: {
+      [key: string]: any;
+    },
+    options?: BuildOptions
+  ): QueryBody {
+    return {
+      ...(this.operation && { operationName: this.operation }),
+      query: this.compact(
+        `${prefix}
+          ${this.builders.map(query).join(',')}
+        ${prefix.length > 0 ? '}' : ''}`,
+        options?.compact ?? true
+      ),
+      variables: queryParamsVariables,
+      connection: options?.connection ?? 'default',
+      queryOptions: options?.queryOptions,
+    };
   }
 }

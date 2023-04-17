@@ -68,7 +68,7 @@ export class Connections {
     this.settings = { logging: false, ...(configuration.settings ?? {}) };
   }
   /**
-   * Creates a configuration with the endpoints.
+   * Creates a configuration with the endpoints that can be used to make requests.
    * * `default` is required. This is the default connection to use if one hasn't been provided.
    * @example
    * Connections.create({

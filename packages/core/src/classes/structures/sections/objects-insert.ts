@@ -15,4 +15,8 @@ export class InsertObjects implements Structure {
       type: 'objects',
     };
   }
+
+  clone() {
+    return new InsertObjects(this.objects);
+  }
 }

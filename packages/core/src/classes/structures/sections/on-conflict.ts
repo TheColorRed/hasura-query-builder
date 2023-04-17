@@ -15,4 +15,8 @@ export class OnConflict implements Structure {
       type: 'on-conflict',
     };
   }
+
+  clone() {
+    return new OnConflict(this.constraint, this.fields);
+  }
 }

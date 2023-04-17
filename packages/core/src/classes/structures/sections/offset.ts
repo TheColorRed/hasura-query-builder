@@ -15,4 +15,8 @@ export class Offset implements Structure {
       type: 'offset',
     };
   }
+
+  clone() {
+    return new Offset(this.offset);
+  }
 }

@@ -17,6 +17,10 @@ export class Where implements Structure {
     };
   }
 
+  clone() {
+    return new Where(this.where);
+  }
+
   static toResult(table: Table, idx: number) {
     if (table.wheres.length === 0) return {};
     return {
@@ -39,6 +43,9 @@ export class WhereOr implements Structure {
    * @param table A temporary table to store the where clause without anything else.
    */
   constructor(private readonly callback: WhereGroup, private readonly table: Table) {}
+  clone() {
+    return new WhereOr(this.callback, this.table);
+  }
   get(table: Table, idx: number): StructureResult {
     this.table.wheres = [];
     const r = this.callback(this.table);
@@ -60,6 +67,9 @@ export class WhereOr implements Structure {
 
 export class WhereAnd implements Structure {
   constructor(private readonly callback: WhereGroup, private readonly table: Table) {}
+  clone() {
+    return new WhereAnd(this.callback, this.table);
+  }
   get(table: Table, idx: number): StructureResult {
     this.table.wheres = [];
     const r = this.callback(this.table);

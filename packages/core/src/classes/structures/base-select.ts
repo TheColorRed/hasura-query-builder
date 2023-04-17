@@ -38,17 +38,7 @@ export class BaseSelect extends BaseQuery implements BaseStructure {
       }`;
     };
 
-    return {
-      ...(this.operation && { operationName: this.operation }),
-      query: this.compact(
-        `${prefix}
-          ${this.builders.map(query).join(',')}
-        ${prefix.length > 0 ? '}' : ''}`,
-        options?.compact ?? true
-      ),
-      variables: queryParamsVariables,
-      connection: options?.connection ?? 'default',
-    };
+    return this.getQueryBody(prefix, query, queryParamsVariables, options);
   }
 
   first(connection: string) {

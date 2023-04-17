@@ -32,4 +32,8 @@ export class Select implements Structure {
       type: 'select',
     };
   }
+
+  clone() {
+    return new Select(this.select);
+  }
 }

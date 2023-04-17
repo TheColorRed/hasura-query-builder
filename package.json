@@ -15,6 +15,6 @@
     "packages/node"
   ],
   "devDependencies": {
-    "typescript": "5.0.1-rc"
+    "typescript": "^5.0.4"
   }
 }

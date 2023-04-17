@@ -42,4 +42,8 @@ export class Primary implements Structure {
       type: 'primary',
     };
   }
+
+  clone() {
+    return new Primary(this.keys);
+  }
 }

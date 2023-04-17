@@ -1,34 +1,13 @@
 import { EMPTY, Observable, of } from 'rxjs';
 import { concatMap, expand, map, skip, switchMap, takeWhile, tap } from 'rxjs/operators';
 import { customFields } from '../functions/custom-fields';
+import { request } from '../functions/http-request';
 import { PrimaryKeyValue } from '../interfaces/api';
 import { BaseModel, Fields, FieldsResult, Newable } from './base-model';
-import { BuildOptions, QueryBody } from './structures/structure';
+import { PaginationConfig, Paginator } from './paginator';
+import { BuildOptions, QueryBody, QueryOptions } from './structures/structure';
 import { SubscriptionRef } from './subscription-ref';
 import { Table } from './table';
-
-export interface CustomWindow extends Window {
-  /**
-   * @internal
-   *
-   * Makes a Hasura query or mutation.
-   */
-  hasuraHttpRequest<T = unknown>(body: QueryBody): Observable<T>;
-  /**
-   * @internal
-   *
-   * Starts a Hasura query subscription.
-   */
-  hasuraWsRequest<T = unknown>(body: QueryBody): Observable<{ id: string; data: T }>;
-  /**
-   * @internal
-   *
-   * Closes a Hasura subscription
-   * @param id The subscription id.
-   */
-  hasuraWsClose(id: string): boolean;
-}
-export declare let global: { window: CustomWindow };
 
 export interface InsertConflict {
   /** The name of the primary or unique key that this applies to. */
@@ -42,6 +21,9 @@ export interface InsertConflict {
 //   K extends Fields<T> = Fields<T>
 // > extends BaseModel {
 export abstract class Model extends BaseModel {
+  /**
+   * Whether or not the query type is a subscription.
+   */
   isSubscription = false;
 
   // constructor(fields: { [P in keyof Partial<K>]: K[P] }) {
@@ -56,14 +38,7 @@ export abstract class Model extends BaseModel {
   private request<T = Fields<this>, U = Observable<T> | Observable<{ id: string; data: T }>>(
     body: QueryBody
   ): U | typeof EMPTY {
-    if (typeof global.window !== 'undefined') {
-      if (!this.isSubscription && typeof global.window.hasuraHttpRequest === 'function') {
-        return global.window.hasuraHttpRequest(body) as any;
-      } else if (this.isSubscription && typeof global.window.hasuraWsRequest === 'function') {
-        return global.window.hasuraWsRequest(body) as any;
-      }
-    }
-    return EMPTY;
+    return request(body, this.isSubscription) as U;
   }
 
   /**
@@ -188,6 +163,14 @@ export abstract class Model extends BaseModel {
     return this.request<T>(body);
   }
   /**
+   * Sets the options to use for the query.
+   * @param options The options to use for the query.
+   */
+  options(options: QueryOptions) {
+    this.queryOptions = options;
+    return this;
+  }
+  /**
    * Emits all the results as an array of items.
    * @example
    * // Get a user by their primary key.
@@ -217,11 +200,19 @@ export abstract class Model extends BaseModel {
     return this.get().pipe(switchMap(item => item as FieldsResult<this>[]));
   }
   /**
+   * Creates a pagination object that can be used to paginate the results.
+   * @param resultsPerPage The number of results to return per page.
+   */
+  paginate<T>(config?: PaginationConfig) {
+    const table = this.builder.clone();
+    return new Paginator<T>(table, config);
+  }
+  /**
    * A quick way to grab fields from the database.
    * @param fields The fields to grab from the database.
    * @example
    * // Get the first and last name of all users.
-   * Users.all().pluck('first', 'last').get().pipe(tap(console.log)).subscribe();
+   * Users.all().pluck('first', 'last').pipe(tap(console.log)).subscribe();
    *
    * // Similar to this:
    * Users.all().select('first', 'last').get().pipe(tap(console.log)).subscribe();

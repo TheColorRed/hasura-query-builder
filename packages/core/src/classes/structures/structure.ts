@@ -1,3 +1,4 @@
+import type { Connections } from '../connections/connections';
 import { Table } from '../table';
 
 export type StructureType =
@@ -29,13 +30,30 @@ export interface StructureResult {
 
 export interface Structure {
   get(table: Table, idx: number): StructureResult | undefined;
+  clone(): Structure;
+}
+
+export interface QueryOptions {
+  /** Whether or not the query should be cached. */
+  cache?: boolean;
+  /** Additional headers to send with the query. */
+  headers?: Record<string, string>;
 }
 
 export interface QueryBody {
+  /** The query string. */
   query: string;
+  /** The query operation name. */
   operationName?: string;
+  /** The query variables. */
   variables?: object;
+  /**
+   * The connection name to use.
+   * @see {@link Connections.create}
+   */
   connection?: string | 'default';
+  /** The query options. */
+  queryOptions?: QueryOptions;
 }
 
 export interface BuildOptions {
@@ -43,6 +61,7 @@ export interface BuildOptions {
   nested?: boolean;
   compact?: boolean;
   type?: 'query' | 'mutation' | 'subscription';
+  queryOptions?: QueryOptions;
 }
 
 export interface BaseStructure {

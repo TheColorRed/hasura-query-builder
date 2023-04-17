@@ -75,4 +75,13 @@ export class Order implements Structure {
     }
     return undefined;
   }
+
+  clone() {
+    if (Array.isArray(this.fieldsArr)) {
+      return new Order(this.fieldsArr);
+    } else if (typeof this.fieldsObj !== 'undefined') {
+      return new Order(this.fieldsObj);
+    }
+    throw new Error('Invalid order by fields');
+  }
 }

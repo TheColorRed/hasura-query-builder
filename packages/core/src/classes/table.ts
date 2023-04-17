@@ -12,22 +12,34 @@ import { Where, WhereAnd, WhereGroup, WhereOr } from './structures/sections/wher
 import { HasuraWhere, HasuraWhereComparison } from './structures/structure';
 
 export class Table<T extends object = object> {
-  readonly selects: Select[] = [];
+  /** The query selects. */
+  selects: Select[] = [];
+  /** The query connection name. */
   connectionName: string | undefined = 'default';
+  /** The query where statements. */
   wheres: (Where | WhereOr | WhereAnd)[] = [];
+  /** The query primary key. */
   primaryKey?: Primary;
+  /** The query order by statement. */
   orders?: Order;
+  /** The query cursor. */
   cursors?: Cursor;
+  /** The query batch size. */
   batchSize?: BatchSize;
+  /** The query distinct statement. */
   distinctOpts?: Distinct;
+  /** The query limit statement. */
   limits?: Limit;
+  /** The query offset statement. */
   offsets?: Offset;
+  /** The query table name. */
   table!: string;
+  /** The query table alias. */
   alias = '';
+  /** @internal The query dynamic select fields. */
   callbackMap: (<T, U extends { [key: string]: any }>(row: T) => U)[] = [];
   /** @internal The model reference if there is one. */
   model?: BaseModel;
-
   /**
    * Creates a new query on a single table.
    * @param name The name of the table.
@@ -148,51 +160,98 @@ export class Table<T extends object = object> {
     return this;
   }
   /**
-   * Sets a limit for the query.
-   * @param limit The number of items to return.
-   * @param offset The zero based offset where to start returning results; Default = 0.
+   * Sets a limit for the query and optionally an offset.
+   * @param limit The number of items to return. If `reset` is passed, the limit is cleared.
+   * @param offset The zero based offset where to start returning results; Default = 0. If `reset` is passed, the offset is cleared.
    */
-  limit(limit: number, offset: number = 0) {
+  limit(limit: number | 'reset', offset: number | 'reset' = 0) {
+    // Reset the limit so that there is no limit.
+    if (limit === 'reset' || offset === 'reset') {
+      if (limit === 'reset') this.limits = undefined;
+      if (offset === 'reset') this.offsets = undefined;
+      return this;
+    }
     this.limits = new Limit(limit);
-    if (offset > 0) this.offset(offset);
+    this.offset(offset);
     return this;
   }
-
-  offset(offset: number) {
+  /**
+   * Sets an offset for the query.
+   * @param offset The zero based offset where to start returning results. If `reset` is passed, the offset is cleared.
+   */
+  offset(offset: number | 'reset') {
+    if (offset === 'reset') {
+      this.offsets = undefined;
+      return this;
+    }
     this.offsets = new Offset(offset);
     return this;
   }
-
+  /**
+   * Sets the primary key for the query.
+   * @param keys The primary key to use for the query. This can be a single value or an array of values for a compound primary key.
+   */
   primary(keys: CompoundPrimaryKeyKeyValues) {
     this.primaryKey = new Primary(keys);
     return this;
   }
-
-  order(fields: { [key: string]: Direction }): this;
+  /**
+   * Adds an order by clause to the query.
+   * @param fields The field or fields to order by.
+   */
+  order(fields: SortFields): this;
+  /**
+   * Adds an order by clause to the query.
+   * @param fields The field or fields to order by.
+   */
   order(fields: SortFields[]): this;
   order(fields: { [key: string]: Direction } | SortFields[]) {
     this.orders = Array.isArray(fields) ? new Order(fields) : new Order(fields);
     return this;
   }
-
+  /**
+   * Adds a distinct clause to the query.
+   * @param field The field or fields to order by.
+   */
   distinct(...field: string[]) {
     this.distinctOpts = new Distinct(field);
     return this;
   }
-
+  /**
+   * Adds a cursor to the query.
+   * @param size The number of items to return.
+   * @param field The field to use for the cursor.
+   * @param value The value to use for the cursor.
+   */
   cursor(size: number, field: string, value: any) {
     this.cursors = new Cursor(field, value);
     this.batchSize = new BatchSize(size);
     return this;
   }
-
   /**
    * Clones the current table into a new table.
    */
   clone(): Table;
+  /**
+   * Clones the current table into a new table.
+   * @param name The name of the the new table.
+   * @param alias An alias for the new table.
+   */
   clone(name: string, alias?: string): Table;
   clone(...args: [string, string?] | []) {
     const table = Object.assign(Object.create(Object.getPrototypeOf(this)), this) as Table;
+
+    if (typeof this.model !== 'undefined') {
+      table.selects = this.selects.map(s => s.clone());
+      table.wheres = this.wheres.map(w => w.clone());
+      table.orders = this.orders?.clone();
+      table.limits = this.limits?.clone();
+      table.offsets = this.offsets?.clone();
+      table.primaryKey = this.primaryKey?.clone();
+      table.distinctOpts = this.distinctOpts?.clone();
+      table.cursors = this.cursors?.clone();
+      table.batchSize = this.batchSize?.clone();
+    }
 
     if (args.length === 1) {
       table.table = args[0];

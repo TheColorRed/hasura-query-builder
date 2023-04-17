@@ -15,4 +15,8 @@ export class Limit implements Structure {
       type: 'limit',
     };
   }
+
+  clone() {
+    return new Limit(this.limit);
+  }
 }

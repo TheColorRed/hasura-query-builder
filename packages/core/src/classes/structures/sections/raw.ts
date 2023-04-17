@@ -14,4 +14,8 @@ export class Raw implements Structure {
       type: 'raw',
     };
   }
+
+  clone() {
+    return new Raw(this.data, this.vars);
+  }
 }

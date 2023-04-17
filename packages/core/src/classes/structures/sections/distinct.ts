@@ -15,4 +15,8 @@ export class Distinct implements Structure {
       type: 'distinct',
     };
   }
+
+  clone() {
+    return new Distinct(this.distinct);
+  }
 }

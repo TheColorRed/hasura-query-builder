@@ -3,7 +3,10 @@
   "compilerOptions": {
     "jsx": "react",
     "jsxFactory": "DOMcreateElement",
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "typeRoots": [
+      "../../packages/core/src/global.d.ts"
+    ]
   },
   "include": [
     "components/**/*.tsx"

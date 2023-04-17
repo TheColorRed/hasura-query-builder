@@ -1,5 +1,10 @@
 {
   "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "typeRoots": [
+      "./src/global.d.ts"
+    ]
+  },
   "include": [
     "src/**/*.ts"
   ],

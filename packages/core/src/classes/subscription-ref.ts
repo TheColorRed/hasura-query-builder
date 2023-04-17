@@ -2,9 +2,9 @@ import { of, ReplaySubject, Subject } from 'rxjs';
 import { finalize, map, switchMap, take } from 'rxjs/operators';
 import { customFields } from '../functions/custom-fields';
 import { BaseModel, FieldsResult } from './base-model';
-import { CustomWindow, Model } from './model';
+import { Model } from './model';
 import { Table } from './table';
-declare let window: CustomWindow;
+// declare let window: CustomWindow;
 
 export class SubscriptionRef<T extends BaseModel = BaseModel, U extends FieldsResult<T> = FieldsResult<T>> {
   private table: string;
@@ -44,7 +44,7 @@ export class SubscriptionRef<T extends BaseModel = BaseModel, U extends FieldsRe
    */
   close() {
     if (typeof this.id === 'undefined') return;
-    if (window.hasuraWsClose(this.id)) {
+    if (global.window.hasuraWsClose(this.id)) {
       this.closed.next();
     }
   }

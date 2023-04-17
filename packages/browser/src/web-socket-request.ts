@@ -1,8 +1,8 @@
-import { ConnectionManager, CustomWindow, QueryBody } from '@hasura-query-builder/core';
+import { ConnectionManager, QueryBody } from '@hasura-query-builder/core';
 import { EMPTY, Observable, of, switchMap } from 'rxjs';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 
-declare let window: CustomWindow;
+// declare let window: CustomWindow;
 /** A message from Hasura to keep the connection alive. */
 interface HasuraWebSocketKeepAlive {
   type: 'ka';
@@ -41,7 +41,7 @@ export type SocketMessages<T> =
   | HasuraWebSocketComplete;
 const sockets: Map<string, WebSocketSubject<SocketMessages<any>>> = new Map();
 
-window.hasuraWsRequest = <T = unknown>(body: QueryBody): Observable<{ id: string; data: T }> => {
+global.window.hasuraWsRequest = <T = unknown>(body: QueryBody): Observable<{ id: string; data: T }> => {
   const { query, url, headers } = ConnectionManager.getRequestInformation<{ [key: string]: string }>(body, 'socket');
   const subject = webSocket({
     url: url.toString(),
@@ -78,7 +78,7 @@ window.hasuraWsRequest = <T = unknown>(body: QueryBody): Observable<{ id: string
  * Closes a subscription
  * @param id The subscription id.
  */
-window.hasuraWsClose = (id: string) => {
+global.window.hasuraWsClose = (id: string) => {
   const subject = sockets.get(id);
   if (typeof subject === 'undefined') return false;
 

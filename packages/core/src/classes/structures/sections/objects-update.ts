@@ -15,4 +15,8 @@ export class UpdateObjects implements Structure {
       type: 'objects',
     };
   }
+
+  clone() {
+    return new UpdateObjects(this.objects);
+  }
 }
