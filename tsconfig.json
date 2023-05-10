@@ -21,7 +21,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "strict": true,
-    "declaration": false,
+    "declaration": true,
     "stripInternal": true,
   }
 }

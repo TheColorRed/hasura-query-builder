@@ -2,19 +2,32 @@
   "scripts": {
     "start:node": "npm start -w tests/node",
     "start:browser": "npm start -w tests/browser",
+    "start:angular": "npm start -w tests/angular",
     "test:node": "npm test -w tests/node",
-    "test:angular": "npm test -w tests/angular"
+    "test:angular": "npm test -w tests/angular",
+    "clean": "rm ./package-lock.json & npx rimraf node_modules & npm exec --workspaces -- npx rimraf node_modules",
+    "build": "npm run build:core && npm run build:angular",
+    "patch": "npm version patch && npm publish --access public",
+    "build:core": "npm run build -w packages/core",
+    "build:angular": "npm run build -w packages/angular",
+    "publish:patch:core": "npm version patch -w packages/core && npm run build:core && npm publish -w packages/core",
+    "publish:patch:angular": "npm version patch -w packages/angular/projects/hasura-query-builder && npm run build:angular && cd packages/angular/dist/hasura-query-builder && npm publish --access public"
   },
   "workspaces": [
-    "tests/node",
     "tests/angular",
     "tests/browser",
-    "packages/browser",
+    "tests/node",
     "packages/core",
+    "packages/browser",
     "packages/angular",
+    "packages/angular/projects/hasura-query-builder",
     "packages/node"
   ],
   "devDependencies": {
-    "typescript": "^5.0.4"
+    "typescript": "^4.9.5",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1",
+    "webpack-merge": "^5.8.0",
+    "webpack-node-externals": "3.0.0"
   }
 }

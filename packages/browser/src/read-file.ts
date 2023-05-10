@@ -1,8 +1,5 @@
-// import { CustomWindow } from '@hasura-query-builder/core';
 import { of, tap } from 'rxjs';
 import { fromFetch } from 'rxjs/fetch';
-
-// declare let window: CustomWindow;
 
 class HasuraFileReader {
   files = new Map<string, string>();
@@ -17,4 +14,5 @@ class HasuraFileReader {
   }
 }
 
-global.window.hasuraFileReader = new HasuraFileReader();
+const win = (typeof global !== 'undefined' ? global.window : window) as CustomWindow;
+win.hasuraFileReader = new HasuraFileReader();

@@ -4,7 +4,7 @@ import { Limit } from './sections/limit';
 import { Order } from './sections/order';
 import { Select } from './sections/select';
 import { Where } from './sections/where';
-import { BaseStructure, BuildOptions, QueryBody } from './structure';
+import { BaseStructure, QueryBody } from './structure';
 
 export interface SelectOptions {
   table: string;
@@ -24,14 +24,27 @@ export class BaseSelect extends BaseQuery implements BaseStructure {
    * @param nested Whether or not this query is nested within another query
    * @param compact Whether or not this query should be compact (Only needed on outer query).
    */
-  build(options?: BuildOptions): QueryBody {
+  build(): QueryBody {
+    // console.debug(options);
+    const options = this.builders[0].buildOptions;
     const { queryParamsString, queryParamsVariables } = this.getRootQueryParamsInfo();
     const queryOrSub = options?.type === 'subscription' ? 'subscription' : 'query';
     const prefix =
       (options?.nested ?? false) === false ? `${queryOrSub} ${this.operation ?? ''} ${queryParamsString} {` : '';
 
     const query = (builder: Table, idx: number) => {
-      const name = builder.alias.length > 0 ? `${builder.alias}:${builder.table}` : builder.table;
+      const hasTableOverride = !!options.table?.name || !!options.table?.alias;
+      let name = builder.table;
+      if (hasTableOverride) {
+        if (options.table?.name && options.table?.alias) {
+          name = `${options.table.alias}:${options.table.name}`;
+        } else if (options.table?.name) {
+          name = options.table.name;
+        }
+      } else {
+        name = builder.alias.length > 0 ? `${builder.alias}:${builder.table}` : builder.table;
+      }
+
       const data = this.tableData(builder, idx);
       return `${name}${data.tableParams}{
         ${data.select}
@@ -43,6 +56,6 @@ export class BaseSelect extends BaseQuery implements BaseStructure {
 
   first(connection: string) {
     // this.options.limit = new Limit(1);
-    return this.build({ connection });
+    return this.build();
   }
 }

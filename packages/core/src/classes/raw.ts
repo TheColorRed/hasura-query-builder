@@ -1,8 +1,5 @@
 import { EMPTY, exhaustMap, map, Observable } from 'rxjs';
-// import { global } from '../global';
 import { QueryBody } from './structures/structure';
-
-// import  { CustomWindow as global } from './model';
 
 export class Raw {
   constructor(private readonly query: string, private readonly vars?: object) {}
@@ -39,7 +36,7 @@ export class Raw {
     return global.window.hasuraFileReader.read(url).pipe(
       map(query => ({ query, ...{ variables } } as QueryBody)),
       exhaustMap(body => global.window.hasuraHttpRequest(body))
-    );
+    ) as Observable<T>;
   }
   /**
    * Executes a subscription on the database using a query string.

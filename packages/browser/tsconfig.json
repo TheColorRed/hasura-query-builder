@@ -1,14 +1,20 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
+    "outDir": "./dist/lib",
+    "declarationDir": "./dist/types",
     "paths": {
       "@hasura-query-builder/core/debug": [
         "../core/src/debug"
       ]
     },
+    "typeRoots": [
+      "../core/src/global.d.ts",
+      "../../node_modules/@types"
+    ],
   },
   "files": [
+    "../core/src/global.d.ts",
     "src/index.ts"
-  ]
+  ],
 }

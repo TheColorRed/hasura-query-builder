@@ -3,7 +3,7 @@ import { BaseDelete } from './structures/base-delete';
 import { BaseInsert } from './structures/base-insert';
 import { BaseSelect } from './structures/base-select';
 import { BaseUpdate } from './structures/base-update';
-import { BuildOptions, QueryOptions } from './structures/structure';
+import { QueryOptions } from './structures/structure';
 import { Table } from './table';
 export interface ConstructorOptions {
   /** The builders that will be generated for this operation. */
@@ -60,18 +60,18 @@ export class QueryBuilder {
    * @param nested Whether or not this query is nested.
    * @param compact Whether or not to compact the query.
    */
-  build(options?: BuildOptions) {
-    options = { ...options, queryOptions: { ...this.queryOptions } };
+  build() {
+    // options = { ...options, queryOptions: { ...this.queryOptions } };
     switch (this.buildType) {
       case 'insert':
-        return this.baseInsert.build(options);
+        return this.baseInsert.build();
       case 'update':
-        return this.baseUpdate.build(options);
+        return this.baseUpdate.build();
       case 'delete':
-        return this.baseDelete.build(options);
+        return this.baseDelete.build();
       case 'select':
       default:
-        return this.baseSelect.build(options);
+        return this.baseSelect.build();
     }
   }
 }

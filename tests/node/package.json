@@ -8,13 +8,14 @@
   "dependencies": {
     "@hasura-query-builder/core": "*",
     "@hasura-query-builder/node": "*",
-    "rxjs": "7.8.0",
-    "typescript": "^5.0.4"
+    "rxjs": "^7.8.0"
   },
   "devDependencies": {
+    "@types/node": "^18.16.3",
     "circular-dependency-plugin": "^5.2.2",
     "https-browserify": "1.0.0",
     "ts-loader": "^9.4.1",
+    "typescript": "^4.9.5",
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.1"
   }

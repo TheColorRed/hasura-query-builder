@@ -1,6 +1,5 @@
-import { ConnectionManager, Connections, QueryBody } from '@hasura-query-builder/core';
+import { ConnectionManager, Connections, QueryBody, QueryCache } from '@hasura-query-builder/core';
 // import { debug } from '@hasura-query-builder/core/debug';
-import { QueryCache } from '@hasura-query-builder/core';
 import { Observable, iif, of, switchMap, tap } from 'rxjs';
 import { fromFetch } from 'rxjs/fetch';
 
@@ -9,7 +8,8 @@ const queryCache = new QueryCache();
 global.window.hasuraHttpRequest = <T = unknown>(body: QueryBody): Observable<T> => {
   const { query, url, headers } = ConnectionManager.getRequestInformation<Headers>(body);
 
-  const logging = Connections.setting('logging') ?? false;
+  const logging = Connections.setting('logging', body.connection) ?? false;
+  console.debug('logging', logging);
   const useCache = body.queryOptions?.cache ?? true;
   const additionalHeaders = body.queryOptions?.headers ?? {};
   Object.entries(additionalHeaders).forEach(([key, value]) => headers.set(key, value));

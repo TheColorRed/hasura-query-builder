@@ -1,11 +1,22 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "outDir": "./dist/lib",
+    "composite": true,
+    "declarationMap": true,
+    "declarationDir": "./dist/types",
     "typeRoots": [
-      "./src/global.d.ts"
+      "./src/global.d.ts",
+      "../../node_modules/@types"
+    ],
+    "types": [
+      "node",
     ]
   },
+  "files": [
+    "./src/global.d.ts"
+  ],
   "include": [
-    "src/**/*.ts"
+    "./src/**/*.ts"
   ],
 }

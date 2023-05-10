@@ -13,7 +13,10 @@ export class Select implements Structure {
       if (typeof field === 'string') {
         return acc.concat(field.split(/,|\n/));
       } else {
-        const items = field.map(builder => new QueryBuilder(builder).build({ nested: true }).query);
+        const items = field.map(builder => {
+          builder.setBuildOptions({ nested: true });
+          return new QueryBuilder(builder).build().query;
+        });
         return acc.concat(items);
       }
     }, []);

@@ -9,7 +9,7 @@ import { Direction, Order } from './structures/sections/order';
 import { CompoundPrimaryKeyKeyValues, Primary } from './structures/sections/primary';
 import { Select } from './structures/sections/select';
 import { Where, WhereAnd, WhereGroup, WhereOr } from './structures/sections/where';
-import { HasuraWhere, HasuraWhereComparison } from './structures/structure';
+import { BuildOptions, HasuraWhere, HasuraWhereComparison } from './structures/structure';
 
 export class Table<T extends object = object> {
   /** The query selects. */
@@ -41,6 +41,10 @@ export class Table<T extends object = object> {
   /** @internal The model reference if there is one. */
   model?: BaseModel;
   /**
+   * @internal
+   */
+  buildOptions: BuildOptions = {};
+  /**
    * Creates a new query on a single table.
    * @param name The name of the table.
    * * `string` &ndash; The name of the table.
@@ -55,6 +59,13 @@ export class Table<T extends object = object> {
   constructor(name: string, alias = '') {
     this.table = name;
     this.alias = alias;
+  }
+  /**
+   * @internal
+   *
+   */
+  setBuildOptions(options: Partial<BuildOptions>) {
+    this.buildOptions = { ...this.buildOptions, ...options };
   }
   /**
    * Uses a specific connection for the query.

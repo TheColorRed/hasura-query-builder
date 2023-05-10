@@ -1,5 +1,7 @@
 /// <reference types="./global" />
+/// <reference types="node" />
 
+export type { Attributes, Fields, FieldsResult } from './classes/base-model';
 export * from './classes/connections/connection-manager';
 export * from './classes/connections/connections';
 export * from './classes/model';

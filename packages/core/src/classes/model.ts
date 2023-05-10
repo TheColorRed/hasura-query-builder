@@ -159,6 +159,7 @@ export abstract class Model extends BaseModel {
    * @param builder The builder to use to create the query. Defaults to `this`.
    */
   makeRequest<T extends FieldsResult<this>>(builder?: Table, options?: BuildOptions) {
+    options = { ...options, connection: this.connection };
     const body = typeof builder === 'undefined' ? this.build(options) : this.build(builder, options);
     return this.request<T>(body);
   }

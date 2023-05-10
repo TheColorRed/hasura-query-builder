@@ -6,7 +6,7 @@ import { OnConflict } from './structures/sections/on-conflict';
 import { Direction, SortFields } from './structures/sections/order';
 import { CompoundPrimaryKeyKeyValues, CompoundPrimaryKeyNames, PrimaryKeyValue } from './structures/sections/primary';
 import { WhereGroup } from './structures/sections/where';
-import { HasuraWhere, HasuraWhereComparison, QueryBody, QueryOptions } from './structures/structure';
+import { BuildOptions, HasuraWhere, HasuraWhereComparison, QueryBody, QueryOptions } from './structures/structure';
 import { Table } from './table';
 
 /**
@@ -196,40 +196,21 @@ export abstract class BaseModel {
    * @param builder The table to build.
    * @param options The options for the builder.
    */
-  build(builder: Table, options?: { nested?: boolean }): QueryBody;
+  build(builder: Table, options?: BuildOptions): QueryBody;
   /**
    * @internal
    * Builds a query using the current model.
    * @param options The options for the builder.
    */
-  build(options?: { nested?: boolean }): QueryBody;
+  build(options?: BuildOptions): QueryBody;
   build(...args: [Table, object?] | [object?]) {
     const builder = args[0] instanceof Table ? args[0] : this.builder;
-    const options = args[0] instanceof Table ? args[1] : args[0];
+    builder.setBuildOptions({ ...(args[0] instanceof Table ? args[1] : args[0]) });
     if (builder.selects.length === 0 || typeof builder.selects === 'undefined') {
       builder.select(...this.getFields());
     }
-    return new QueryBuilder({ tables: builder, type: this._buildType, queryOptions: this.queryOptions }).build(options);
+    return new QueryBuilder({ tables: builder, type: this._buildType, queryOptions: this.queryOptions }).build();
   }
-  // /**
-  //  * Sets a field to be updated or inserted.
-  //  * @param field The field to update or insert.
-  //  * @param value The value for the field.
-  //  */
-  // set<K extends keyof Fields<this>>(field: K, value: Fields<this>[K]): this;
-  // /**
-  //  * Sets multiple fields that should be updated or inserted.
-  //  * @param fields The fields to to be updated or inserted.
-  //  */
-  // set<K extends keyof Fields<this>>(fields: { [P in K]: Fields<this>[P] }): this;
-  // set(...args: [string, any] | [{ [key: string]: any }]) {
-  //   if (args.length === 2) {
-  //     this.fieldsToUpdate.set(args[0] as string, args[1]);
-  //   } else {
-  //     Object.entries(args[0]).forEach(([key, val]) => this.fieldsToUpdate.set(key, val));
-  //   }
-  //   return this;
-  // }
 
   /**
    * Where a field successfully compares against a value.
@@ -300,7 +281,10 @@ export abstract class BaseModel {
     this.builder.whereFalsy(...(fields as string[]));
     return this;
   }
-
+  /**
+   * Selects additional fields that are not defined in the model.
+   * @param fields The additional fields to select on the model.
+   */
   select(...fields: (string | Table[])[]) {
     this.builder.select(...fields);
     return this;
@@ -387,7 +371,8 @@ export abstract class BaseModel {
       // Create the class and add select fields if they haven't been set.
       else {
         const i = (builder as any).all() as BaseModel;
-        i.alias(key);
+        i.builder.setBuildOptions({ nested: true, table: { name: key, alias: key } });
+        // i.alias(key);
         if (i.builder.selects.length === 0 || typeof i.builder.selects === 'undefined') {
           i.select(...Object.keys(i.fields));
         }

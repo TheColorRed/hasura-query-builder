@@ -3,46 +3,50 @@ import type { OutgoingHttpHeaders } from 'http';
  * The connection information for a single connection.
  */
 export interface ConnectionInfo {
-  /**
-   * The url endpoint to connect to.
-   */
+  /** The url endpoint to connect to for this connection. */
   url: URL;
   /**
-   * Optional headers to send with each request.
+   * Optional headers to send with each request for this connection.<br />
+   *
+   * Set the value for the key to `undefined` to remove the specific header set by the global headers.
+   * @see {@link ConnectionConfiguration.headers} For global headers.
    */
   headers?: OutgoingHttpHeaders;
+  /**
+   * The connection specific settings for how this connection should behave.
+   * @see {@link ConnectionConfiguration.settings} For global settings.
+   */
+  settings?: Settings;
 }
 /**
  * An object containing the default connection and a list of all other connections.
  */
 export interface ConnectionsInformation {
-  /**
-   * The default connection. This is the connection that will be used if no connection is specified.
-   */
+  /** The default connection. This is the connection that will be used if no connection is specified. */
   default: ConnectionInfo | URL;
-  /**
-   * A list of connections. The key is the name of the connection to use when specifying a connection.
-   */
+  /** A list of connections. The key is the name of the connection to use when specifying a connection. */
   [key: string]: ConnectionInfo | URL;
 }
 /**
  * The configuration for the connections.
  */
 export interface ConnectionConfiguration {
-  /**
-   * The default connection and a list of all other connections.
-   */
+  /** The default connection and a list of all other connections. */
   connections: ConnectionsInformation;
   /**
-   * The network settings for how the connections should behave.
+   * The global connection settings for how all connections should behave by default.
+   * @see {@link ConnectionInfo.settings} For connection specific settings.
    */
-  settings?: NetworkSettings;
+  settings?: Settings;
+  /**
+   * The global headers to send with each request.
+   * @see {@link ConnectionInfo.headers} For connection specific headers.
+   */
+  headers?: OutgoingHttpHeaders;
 }
 
-export interface NetworkSettings {
-  /**
-   * Whether or not to log the network request and response information.
-   */
+export interface Settings {
+  /** Whether or not to log the network request and response information. */
   logging?: boolean;
 }
 
@@ -51,7 +55,11 @@ export class Connections {
   static instance: Connections;
   /** The list of configurations. */
   private readonly connections: Map<string, URL | ConnectionInfo>;
-  private readonly settings: NetworkSettings;
+  private readonly settings: Settings;
+  private readonly globalHeaders: OutgoingHttpHeaders = {};
+  get headers() {
+    return this.globalHeaders;
+  }
   /**
    * @internal
    * DO NOT USE: Used to create a singleton instance.
@@ -66,6 +74,7 @@ export class Connections {
     );
     this.connections = new Map<string, URL | ConnectionInfo>(result);
     this.settings = { logging: false, ...(configuration.settings ?? {}) };
+    this.globalHeaders = { ...configuration.headers };
   }
   /**
    * Creates a configuration with the endpoints that can be used to make requests.
@@ -113,7 +122,18 @@ export class Connections {
   static get(connectionId: string) {
     return Connections.instance.connections.get(connectionId);
   }
-  static setting<T extends keyof NetworkSettings>(name: T): NetworkSettings[T] {
+  /**
+   * Gets a setting from the list of settings.
+   * @param name The name of the setting to get.
+   * @param connectionId The connection key to get the setting from if it has settings.
+   */
+  static setting<T extends keyof Settings>(name: T, connectionId?: string): Settings[T] {
+    if (typeof connectionId !== 'undefined') {
+      const connection = Connections.instance.connections.get(connectionId);
+      if (typeof connection !== 'undefined' && 'settings' in connection && typeof connection.settings !== 'undefined') {
+        return connection.settings[name];
+      }
+    }
     return Connections.instance.settings[name];
   }
   /**

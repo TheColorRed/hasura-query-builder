@@ -48,32 +48,33 @@ customElements.define(
     pageSpan = this.shadowRoot?.querySelector('span[id="page"]') as HTMLSpanElement;
     totalSpan = this.shadowRoot?.querySelector('span[id="total"]') as HTMLSpanElement;
 
-    page = this.paginator.page$.pipe(
-      switchMap(page =>
-        of(page.results).pipe(
-          tap(() => (this.content.innerHTML = '')),
-          switchMap(i => i),
-          tap(user => {
-            this.content.appendChild(<app-user user={user.id + '. ' + user.first}></app-user>);
-            this.prevButton.disabled = page.isFirstPage;
-            this.nextButton.disabled = page.isLastPage;
-            this.firstButton.disabled = page.isFirstPage;
-            this.lastButton.disabled = page.isLastPage;
-            this.pageSpan.innerText = page.currentPage.toString();
-            this.totalSpan.innerText = page.totalPages.toString();
-          })
+    page = this.paginator.page$
+      .pipe(
+        switchMap(page =>
+          of(page.results).pipe(
+            tap(() => (this.content.innerHTML = '')),
+            switchMap(i => i),
+            tap(user => {
+              this.content.appendChild(<app-user user={user.id + '. ' + user.first}></app-user>);
+              this.prevButton.disabled = page.isFirstPage;
+              this.nextButton.disabled = page.isLastPage;
+              this.firstButton.disabled = page.isFirstPage;
+              this.lastButton.disabled = page.isLastPage;
+              this.pageSpan.innerText = page.currentPage.toString();
+              this.totalSpan.innerText = page.totalPages.toString();
+            })
+          )
         )
       )
-    );
-    // .subscribe();
+      .subscribe();
 
     connectedCallback() {
       // this.cache.fill([['first', { first: 'Ralph', last: 'Johnson', age: 25, email: 'example@example.com' }]]);
       // console.debug(this.cache.get('first'));
 
-      UsersModel.all().cursor(10, 'id', 1).get().subscribe(console.debug);
+      // UsersModel.all().cursor(10, 'id', 1).get().subscribe(console.debug);
 
-      // this.paginator.first();
+      this.paginator.first();
       this.css.textContent = `
       .users {
         width: 250px;

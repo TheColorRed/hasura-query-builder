@@ -59,7 +59,9 @@ export interface QueryBody {
 export interface BuildOptions {
   connection?: string;
   nested?: boolean;
+  // includeTable?: boolean;
   compact?: boolean;
+  table?: Partial<{ name: string; alias: string }>;
   type?: 'query' | 'mutation' | 'subscription';
   queryOptions?: QueryOptions;
 }
