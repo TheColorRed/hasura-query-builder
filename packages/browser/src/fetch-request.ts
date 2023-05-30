@@ -5,7 +5,8 @@ import { fromFetch } from 'rxjs/fetch';
 
 const queryCache = new QueryCache();
 
-global.window.hasuraHttpRequest = <T = unknown>(body: QueryBody): Observable<T> => {
+// @ts-ignore
+window.hasuraHttpRequest = <T = unknown>(body: QueryBody): Observable<T> => {
   const { query, url, headers } = ConnectionManager.getRequestInformation<Headers>(body);
 
   const logging = Connections.setting('logging', body.connection) ?? false;

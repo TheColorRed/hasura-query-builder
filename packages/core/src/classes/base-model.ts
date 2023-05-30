@@ -1,3 +1,4 @@
+import { JsonConstructor } from './data-types/json';
 import { InsertConflict } from './model';
 import { QueryBuilder } from './query-builder';
 import { InsertObjects } from './structures/sections/objects-insert';
@@ -5,6 +6,8 @@ import { UpdateObjects } from './structures/sections/objects-update';
 import { OnConflict } from './structures/sections/on-conflict';
 import { Direction, SortFields } from './structures/sections/order';
 import { CompoundPrimaryKeyKeyValues, CompoundPrimaryKeyNames, PrimaryKeyValue } from './structures/sections/primary';
+import { SelectField } from './structures/sections/select';
+import { TableParams } from './structures/sections/table-params';
 import { WhereGroup } from './structures/sections/where';
 import { BuildOptions, HasuraWhere, HasuraWhereComparison, QueryBody, QueryOptions } from './structures/structure';
 import { Table } from './table';
@@ -91,7 +94,12 @@ export abstract class BaseModel {
    */
   protected static _find<T extends BaseModel>(model: T, ...primary: PrimaryKeyValue[]) {
     if (typeof model.primary === 'undefined') throw Error(`No primary key set on model "${model.table}"`);
-    if (primary.length !== model.primary.length)
+    if (
+      // The primary key is an array.
+      (Array.isArray(model.primary) && primary.length !== model.primary.length) ||
+      // The primary key is a string.
+      (!Array.isArray(model.primary) && typeof primary[0] === 'string')
+    )
       throw Error(`Key/Value count miss-match on model "${model.constructor.name}"`);
 
     const fields = typeof model.primary === 'string' ? [model.primary] : model.primary;
@@ -110,6 +118,18 @@ export abstract class BaseModel {
    */
   protected static _all<T extends BaseModel>(model: T) {
     model.builder = new Table(model.table);
+    model.builder.model = model;
+    return model;
+  }
+  /**
+   * @internal
+   * An empty table blueprint for calling a table as a function.
+   * This is usually used for custom functions and procedures.
+   * @param model
+   */
+  protected static _call<T extends BaseModel, U extends object = {}>(model: T, parameters: U) {
+    model.builder = new Table(model.table);
+    model.builder.procedureParameters = new TableParams(parameters);
     model.builder.model = model;
     return model;
   }
@@ -207,7 +227,7 @@ export abstract class BaseModel {
     const builder = args[0] instanceof Table ? args[0] : this.builder;
     builder.setBuildOptions({ ...(args[0] instanceof Table ? args[1] : args[0]) });
     if (builder.selects.length === 0 || typeof builder.selects === 'undefined') {
-      builder.select(...this.getFields());
+      builder.select(...this.getFields(this.fields));
     }
     return new QueryBuilder({ tables: builder, type: this._buildType, queryOptions: this.queryOptions }).build();
   }
@@ -285,7 +305,7 @@ export abstract class BaseModel {
    * Selects additional fields that are not defined in the model.
    * @param fields The additional fields to select on the model.
    */
-  select(...fields: (string | Table[])[]) {
+  select(...fields: SelectField) {
     this.builder.select(...fields);
     return this;
   }
@@ -352,16 +372,25 @@ export abstract class BaseModel {
     return this;
   }
 
-  getFields() {
+  getFields(fields?: Fields<any>) {
     const data: { fields: string[]; tables: Table[] } = { fields: [], tables: [] };
     Object.entries(this.fields).forEach(([key, builder]) => {
-      if (typeof builder === 'string' || typeof builder === 'number' || typeof builder === 'boolean')
+      if (
+        typeof builder === 'string' ||
+        typeof builder === 'number' ||
+        typeof builder === 'boolean' ||
+        builder instanceof JsonConstructor
+      )
         data.fields.push(key);
       // Return the table
-      else if (builder instanceof Table) data.tables.push(builder);
+      else if (builder instanceof Table) {
+        console.debug('table', builder);
+        data.tables.push(builder);
+      }
       // The builder is an instance of the BaseModel.
       // Add the fields to the existing builder if needed.
       else if (builder instanceof BaseModel) {
+        console.debug('model', builder);
         if (builder.builder.selects.length === 0 || typeof builder.builder.selects === 'undefined') {
           builder.select(...Object.keys(builder.fields));
         }
@@ -370,13 +399,26 @@ export abstract class BaseModel {
       // The builder is just a reference to a class.
       // Create the class and add select fields if they haven't been set.
       else {
-        const i = (builder as any).all() as BaseModel;
-        i.builder.setBuildOptions({ nested: true, table: { name: key, alias: key } });
+        // console.debug('class', builder);
+        const builderInstance = (builder as any).all() as BaseModel;
+        builderInstance.builder.setBuildOptions({ nested: true, table: { name: key, alias: key } });
         // i.alias(key);
-        if (i.builder.selects.length === 0 || typeof i.builder.selects === 'undefined') {
-          i.select(...Object.keys(i.fields));
+        if (builderInstance.builder.selects.length === 0 || typeof builderInstance.builder.selects === 'undefined') {
+          const keys = Object.keys(builderInstance.fields) as (string | BaseModel)[];
+          const entries = Object.entries(builderInstance.fields);
+          const tables: any[] = [];
+          entries.forEach(([k, value]) => {
+            if (value.prototype instanceof BaseModel) {
+              const idx = keys.findIndex(key => k === key);
+              const model = new value.prototype.constructor() as BaseModel;
+              model.builder = new Table(model.table);
+              model.select(...model.getFields());
+              idx > -1 && keys.splice(idx, 1, model);
+            }
+          });
+          builderInstance.select(...keys);
         }
-        data.tables.push(i.getBuilder());
+        data.tables.push(builderInstance.getBuilder());
       }
     });
     return [...data.fields, data.tables];

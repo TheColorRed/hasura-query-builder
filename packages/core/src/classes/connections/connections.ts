@@ -48,6 +48,10 @@ export interface ConnectionConfiguration {
 export interface Settings {
   /** Whether or not to log the network request and response information. */
   logging?: boolean;
+  /** The database engine to use. */
+  engine?: string;
+  /** Whether or not to cache the query. */
+  cache?: boolean;
 }
 
 export class Connections {
@@ -55,7 +59,7 @@ export class Connections {
   static instance: Connections;
   /** The list of configurations. */
   private readonly connections: Map<string, URL | ConnectionInfo>;
-  private readonly settings: Settings;
+  readonly settings: Settings;
   private readonly globalHeaders: OutgoingHttpHeaders = {};
   get headers() {
     return this.globalHeaders;

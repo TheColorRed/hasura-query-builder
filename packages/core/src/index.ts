@@ -4,6 +4,7 @@
 export type { Attributes, Fields, FieldsResult } from './classes/base-model';
 export * from './classes/connections/connection-manager';
 export * from './classes/connections/connections';
+export * from './classes/data-types/json';
 export * from './classes/model';
 export * from './classes/paginator';
 export * from './classes/query-builder';

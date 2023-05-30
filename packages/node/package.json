@@ -1,6 +1,22 @@
 {
   "name": "@hasura-query-builder/node",
   "main": "src/index",
+  "description": "A library for building Hasura queries in node.",
+  "keywords": [
+    "hasura",
+    "graphql",
+    "query",
+    "builder",
+    "node"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheColorRed/hasura-query-builder"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheColorRed/hasura-query-builder"
+  },
   "dependencies": {
     "chalk": "^5.2.0",
     "rxjs": "^7.8.0"

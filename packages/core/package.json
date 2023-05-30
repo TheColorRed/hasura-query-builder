@@ -1,7 +1,18 @@
 {
   "name": "@hasura-query-builder/core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": false,
+  "description": "Core library for Hasura Query Builder",
+  "keywords": [
+    "hasura",
+    "graphql",
+    "query",
+    "builder"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheColorRed/hasura-query-builder"
+  },
   "scripts": {
     "build": "npx webpack --mode=production",
     "build:watch": "npx webpack --mode=development --watch"
@@ -18,6 +29,7 @@
     "typescript": "^4.9.5"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ]
 }

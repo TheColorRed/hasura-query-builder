@@ -66,6 +66,7 @@ export abstract class Model extends BaseModel {
       all: () => BaseModel._all(model),
       insert: (fields: any) => BaseModel._insert(model, fields),
       update: (fields: any) => BaseModel._update(model, fields),
+      delete: () => BaseModel._delete(model),
     };
   }
   /** The name of the table that this model relates to. */
@@ -97,6 +98,14 @@ export abstract class Model extends BaseModel {
   static all<T extends Model>(this: Newable<T>): T {
     const model = new this();
     return BaseModel._all(model);
+  }
+  /**
+   *
+   * @param parameters A list of parameters to call the function.
+   */
+  static override call<T extends Model, U extends object = {}>(this: Newable<T>, parameters: U): T {
+    const model = new this();
+    return BaseModel._call(model, parameters);
   }
   /**
    * Inserts items into the table using the model.
@@ -262,7 +271,7 @@ export abstract class Model extends BaseModel {
    * // Example Output: 'Sally'
    * Users.all().value('first').subscribe();
    *
-   * // This way would return an object with the first name as a property.
+   * // The following way would return an object with the first name as a property.
    * // Example Output: { first: 'Sally' }
    * Users.all().select('first').first().pipe(tap(console.log)).subscribe();
    */

@@ -14,5 +14,6 @@ class HasuraFileReader {
   }
 }
 
+// @ts-ignore
 const win = (typeof global !== 'undefined' ? global.window : window) as CustomWindow;
 win.hasuraFileReader = new HasuraFileReader();

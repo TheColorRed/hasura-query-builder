@@ -11,7 +11,9 @@
     "build:core": "npm run build -w packages/core",
     "build:angular": "npm run build -w packages/angular",
     "publish:patch:core": "npm version patch -w packages/core && npm run build:core && npm publish -w packages/core",
-    "publish:patch:angular": "npm version patch -w packages/angular/projects/hasura-query-builder && npm run build:angular && cd packages/angular/dist/hasura-query-builder && npm publish --access public"
+    "publish:patch:angular": "npm version patch -w packages/angular/projects/hasura-query-builder && npm run build:angular && cd packages/angular/dist/hasura-query-builder && npm publish --access public",
+    "dev:core": "npm run build:watch -w packages/core",
+    "dev:angular": "npm run watch -w packages/angular"
   },
   "workspaces": [
     "tests/angular",

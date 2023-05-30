@@ -27,6 +27,7 @@ export abstract class BaseQuery {
     const conflict = builder.model?.conflict?.get(builder, idx);
     const cursor = builder.cursors?.get(builder, idx);
     const batch = builder.batchSize?.get(builder, idx);
+    const tblParams = builder.procedureParameters?.get(builder, idx);
 
     const pkOrWhere = typeof primaryKey !== 'undefined' ? primaryKey.query : where?.[idx]?.query ?? '';
 
@@ -40,6 +41,7 @@ export abstract class BaseQuery {
       order?.query,
       cursor?.query,
       batch?.query,
+      tblParams?.query,
     ].filter(param => typeof param === 'string' && param.length > 0);
 
     const tableParams = whereParams.join('')?.length > 0 ? `(${whereParams.join(',')})` : '';
@@ -67,11 +69,13 @@ export abstract class BaseQuery {
           builder.model?.conflict?.get(builder, idx),
           builder.cursors?.get(builder, idx),
           builder.batchSize?.get(builder, idx),
+          builder.procedureParameters?.get(builder, idx),
         ]
           // Remove the structures that are undefined aka they are not a StructureResult.
           .filter((i): i is StructureResult => typeof i !== 'undefined' && Object.keys(i).length > 0)
           .map(itm => {
-            let param: string | string[] = `$${itm.paramKey}`;
+            let param: string | string[] =
+              typeof itm.paramKey === 'string' ? `$${itm.paramKey}` : itm.paramKey.map(i => `$${i}`);
             if (itm.type === 'where' && Object.keys(itm).length > 0) param = `$where_${idx}`;
             else if (itm.type === 'primary')
               param = typeof itm.paramKey === 'string' ? `$${itm.paramKey}` : itm.paramKey.map(i => `$${i}`);

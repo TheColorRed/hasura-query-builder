@@ -7,11 +7,14 @@ import { Offset } from './structures/sections/offset';
 import type { SortFields } from './structures/sections/order';
 import { Direction, Order } from './structures/sections/order';
 import { CompoundPrimaryKeyKeyValues, Primary } from './structures/sections/primary';
-import { Select } from './structures/sections/select';
+import { Select, SelectField } from './structures/sections/select';
+import { TableParams } from './structures/sections/table-params';
 import { Where, WhereAnd, WhereGroup, WhereOr } from './structures/sections/where';
 import { BuildOptions, HasuraWhere, HasuraWhereComparison } from './structures/structure';
 
 export class Table<T extends object = object> {
+  /** The query table alias. */
+  alias = '';
   /** The query selects. */
   selects: Select[] = [];
   /** The query connection name. */
@@ -34,8 +37,8 @@ export class Table<T extends object = object> {
   offsets?: Offset;
   /** The query table name. */
   table!: string;
-  /** The query table alias. */
-  alias = '';
+  /** @internal Parameters to pass to a stored procedure like table. */
+  procedureParameters?: TableParams;
   /** @internal The query dynamic select fields. */
   callbackMap: (<T, U extends { [key: string]: any }>(row: T) => U)[] = [];
   /** @internal The model reference if there is one. */
@@ -89,7 +92,7 @@ export class Table<T extends object = object> {
    * // A field that is named 'date_of_birth' but is outputted as 'dob'.
    * bio.select('dob:date_of_birth')
    */
-  select(...fields: (string | Table[])[]) {
+  select(...fields: SelectField) {
     this.selects.push(new Select(fields));
     return this;
   }

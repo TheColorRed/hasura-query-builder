@@ -13,7 +13,8 @@ export type StructureType =
   | 'primary'
   | 'raw'
   | 'select'
-  | 'where';
+  | 'where'
+  | 'table-params';
 
 export interface StructureResult {
   /** The query string. */

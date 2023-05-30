@@ -135,7 +135,7 @@ export class Paginator<T, U = { [key: string]: T[] }> {
     if (clone.model instanceof BaseModel) {
       const builder = clone.model.getBuilder();
       if (builder.selects.length === 0 || typeof builder.selects === 'undefined') {
-        clone.select(...(builder.model?.getFields() ?? []));
+        clone.select(...(builder.model?.getFields(builder.model.fields) ?? []));
       }
     }
     const qb = new QueryBuilder(clone, undefined, this.config?.model?.queryOptions);

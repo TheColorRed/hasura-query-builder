@@ -2,8 +2,20 @@
   "name": "@hasura-query-builder/browser",
   "version": "1.0.0",
   "main": "src/index",
+  "description": "A library for building Hasura queries in the browser.",
+  "keywords": [
+    "hasura",
+    "graphql",
+    "query",
+    "builder",
+    "browser"
+  ],
   "scripts": {
     "build": "npx webpack --mode=production"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheColorRed/hasura-query-builder"
   },
   "dependencies": {
     "rxjs": "^7.8.0"

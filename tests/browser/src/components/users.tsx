@@ -1,3 +1,4 @@
+import { QueryBuilder, Table } from '@hasura-query-builder/core';
 import { of } from 'rxjs';
 import { switchMap, tap } from 'rxjs/operators';
 import { UsersModel } from '../models/users.model';
@@ -69,6 +70,9 @@ customElements.define(
       .subscribe();
 
     connectedCallback() {
+      const users = new Table('users').select('id', 'first', 'last');
+      const build = new QueryBuilder(users).baseSelect.build();
+      console.debug(build);
       // this.cache.fill([['first', { first: 'Ralph', last: 'Johnson', age: 25, email: 'example@example.com' }]]);
       // console.debug(this.cache.get('first'));
 
