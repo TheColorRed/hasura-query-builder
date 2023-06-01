@@ -267,7 +267,7 @@ export class Table<T extends object = object> {
       table.batchSize = this.batchSize?.clone();
     }
 
-    if (args.length === 1) {
+    if (args.length >= 1 && typeof args[0] === 'string') {
       table.table = args[0];
     }
     if (args.length === 2 && typeof args[1] === 'string') {

@@ -1,5 +1,6 @@
+import { Settings } from './connections/connections';
 import { JsonConstructor } from './data-types/json';
-import { InsertConflict } from './model';
+import type { InsertConflict } from './model';
 import { QueryBuilder } from './query-builder';
 import { InsertObjects } from './structures/sections/objects-insert';
 import { UpdateObjects } from './structures/sections/objects-update';
@@ -61,6 +62,8 @@ export interface BaseModel {
    * **Note:** These fields cannot be used at the database level.
    */
   attributes?: AttributesType<this>;
+  /** Settings for the model. */
+  settings?: Settings;
 }
 export abstract class BaseModel {
   /** The name of the table that this model relates to. */
@@ -205,6 +208,18 @@ export abstract class BaseModel {
     return model;
   }
   /**
+   * Creates a new table blueprint.
+   * @param name The name of the table.
+   * @param alias The alias of the table.
+   */
+  clone<T extends this>(name?: string, alias?: string) {
+    const base = Object.assign(Object.create(Object.getPrototypeOf(this)), this) as T;
+    // @ts-ignore
+    base.table = name ?? this.table;
+    base.builder = base.builder.clone(name ?? this.table, alias);
+    return base;
+  }
+  /**
    * Gets the builder.
    */
   getBuilder() {
@@ -322,22 +337,35 @@ export abstract class BaseModel {
     this.builder.order(newOrder);
     return this;
   }
-
+  /**
+   * Sets the distinct fields for the query.
+   * @param fields The fields to group by.
+   */
   distinct(...fields: string[]) {
     this.builder.distinct(...fields);
     return this;
   }
-
+  /**
+   * Sets the limit for the query.
+   * @param limit The number of rows to return.
+   * @param offset The offset to start at.
+   */
   limit(limit: number, offset: number = 0) {
     this.builder.limit(limit, offset);
     return this;
   }
-
+  /**
+   * Sets the offset for the query.
+   * @param offset The offset to start at.
+   */
   offset(offset: number) {
     this.builder.offset(offset);
     return this;
   }
-
+  /**
+   * Sets an alias for the table.
+   * @param name The table alias.
+   */
   alias(name: string) {
     this.builder.alias = name;
     return this;
