@@ -1,5 +1,5 @@
 import { EMPTY, Observable } from 'rxjs';
-import { QueryBody } from '../classes/structures/structure';
+import { QueryBody, QueryOptions } from '../classes/structures/structure';
 import { isBrowser } from './helpers';
 
 /**
@@ -7,9 +7,9 @@ import { isBrowser } from './helpers';
  * @param body The query body to be sent to the server.
  * @param isSubscription Whether the request is a subscription or not.
  */
-export function request<T>(body: QueryBody, isSubscription = false) {
+export function request<T>(body: QueryBody, requestOptions: QueryOptions = {}) {
   if (isBrowser()) {
-    return browserRequest<T>(body, isSubscription);
+    return browserRequest<T>(body, requestOptions);
   }
   return EMPTY;
 }
@@ -19,12 +19,12 @@ export function request<T>(body: QueryBody, isSubscription = false) {
  * @param body The query body to be sent to the server.
  * @param isSubscription Whether the request is a subscription or not.
  */
-export function browserRequest<T>(body: QueryBody, isSubscription = false): Observable<T> | typeof EMPTY {
+export function browserRequest<T>(body: QueryBody, options: QueryOptions = {}): Observable<T> | typeof EMPTY {
   const win = (typeof global !== 'undefined' ? global.window : window) as CustomWindow;
-  if (!isSubscription && typeof win.hasuraHttpRequest === 'function') {
-    return win.hasuraHttpRequest<T>(body);
-  } else if (isSubscription && typeof win.hasuraWsRequest === 'function') {
-    return win.hasuraWsRequest<T>(body);
+  if (!options.isSubscription && typeof win.hasuraHttpRequest === 'function') {
+    return win.hasuraHttpRequest<T>(body, options);
+  } else if (options.isSubscription && typeof win.hasuraWsRequest === 'function') {
+    return win.hasuraWsRequest<T>(body, options);
   }
   return EMPTY;
 }

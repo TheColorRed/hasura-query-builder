@@ -1,7 +1,8 @@
-import { BuildType } from './base-model';
+import { QueryType } from './base-model';
 import { BaseDelete } from './structures/base-delete';
 import { BaseInsert } from './structures/base-insert';
 import { BaseSelect } from './structures/base-select';
+import { BaseTransaction } from './structures/base-transaction';
 import { BaseUpdate } from './structures/base-update';
 import { QueryOptions } from './structures/structure';
 import { Table } from './table';
@@ -11,7 +12,7 @@ export interface ConstructorOptions {
   /** A name for the operation. */
   operation?: string;
   /** The type of query to build. */
-  type?: BuildType;
+  type?: QueryType;
   /** The options for the query. */
   queryOptions?: QueryOptions;
 }
@@ -21,7 +22,7 @@ export interface ConstructorOptions {
 export class QueryBuilder {
   private builders: Table[] = [];
   private operation: string = '';
-  private buildType: BuildType = 'select';
+  private buildType: QueryType = 'select';
   private queryOptions?: QueryOptions;
   /** The base select query builder to build select statements. */
   get baseSelect() {
@@ -38,6 +39,9 @@ export class QueryBuilder {
   /** The base delete query builder to build delete statements. */
   get baseDelete() {
     return new BaseDelete(this.builders, this.operation);
+  }
+  get baseTransaction() {
+    return new BaseTransaction(this.builders, this.operation);
   }
   constructor(options: ConstructorOptions);
   constructor(table: Table, operation?: string, queryOptions?: QueryOptions);
@@ -69,6 +73,8 @@ export class QueryBuilder {
         return this.baseUpdate.build();
       case 'delete':
         return this.baseDelete.build();
+      case 'transaction':
+        return this.baseTransaction.build();
       case 'select':
       default:
         return this.baseSelect.build();

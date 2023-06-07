@@ -5,7 +5,7 @@ import { request } from '../functions/http-request';
 import { PrimaryKeyValue } from '../interfaces/api';
 import { BaseModel, Fields, FieldsResult, Newable } from './base-model';
 import { PaginationConfig, Paginator } from './paginator';
-import { BuildOptions, QueryBody, QueryOptions } from './structures/structure';
+import { BuildOptions, HasuraWhere, HasuraWhereComparison, QueryBody, QueryOptions } from './structures/structure';
 import { SubscriptionRef } from './subscription-ref';
 import { Table } from './table';
 
@@ -21,10 +21,7 @@ export interface InsertConflict {
 //   K extends Fields<T> = Fields<T>
 // > extends BaseModel {
 export abstract class Model extends BaseModel {
-  /**
-   * Whether or not the query type is a subscription.
-   */
-  isSubscription = false;
+  isMethodCall = false;
 
   // constructor(fields: { [P in keyof Partial<K>]: K[P] }) {
   //   super();
@@ -38,7 +35,7 @@ export abstract class Model extends BaseModel {
   private request<T = Fields<this>, U = Observable<T> | Observable<{ id: string; data: T }>>(
     body: QueryBody
   ): U | typeof EMPTY {
-    return request(body, this.isSubscription) as U;
+    return request(body, this.queryOptions) as U;
   }
 
   /**
@@ -71,7 +68,22 @@ export abstract class Model extends BaseModel {
   }
   /** The name of the table that this model relates to. */
   abstract override readonly table: string;
-  /** Fields that are in the database table. */
+  /**
+   * Fields that are in the database table. These are the base fields that are used for all queries.
+   * These fields can be overridden by using the `.select()` method.
+   * These fields can be added to by using the `.addSelect()` method.
+   * @example
+   * export class Users extends Model {
+   *   override table = 'users';
+   *   override fields = {
+   *     id: Number(),
+   *     name: String(),
+   *   }
+   * }
+   *
+   * Users.all().select('id').get(); // Only returns the id field.
+   * Users.all().addSelect('email').get(); // Returns the id, name, and email fields.
+   */
   abstract override readonly fields: Fields<any>;
   /**
    * Retrieve a record from the table by its primary key.
@@ -83,6 +95,26 @@ export abstract class Model extends BaseModel {
     const model = new this();
     return BaseModel._find(model, ...primary);
   }
+
+  static all<T extends Model, K extends keyof Fields<Model>>(
+    this: Newable<T>,
+    field: K,
+    key: '_is_null',
+    value: boolean
+  ): T;
+  static all<T extends Model, K extends keyof Fields<Model>>(
+    this: Newable<T>,
+    field: K,
+    key: keyof HasuraWhereComparison,
+    value: Fields<Model>[K]
+  ): T;
+  static all<T extends Model, K extends keyof Fields<Model>>(
+    this: Newable<T>,
+    field: K,
+    value: Fields<BaseModel>[K]
+  ): T;
+  static all<T extends Model, K extends keyof Fields<Model>>(this: Newable<T>, fields: HasuraWhere): T;
+  static all<T extends Model, K extends keyof Fields<Model>>(this: Newable<T>): T;
   /**
    * Retrieve all the records from the table.
    *
@@ -95,17 +127,38 @@ export abstract class Model extends BaseModel {
    * Users.all().first().subscribe();
    * Users.all().chunk(10).subscribe();
    */
-  static all<T extends Model>(this: Newable<T>): T {
+  static all<T extends Model, K extends keyof Fields<Model>>(
+    this: Newable<T>,
+    ...where: [K, string, any] | [K, any] | [HasuraWhere] | []
+  ): T {
     const model = new this();
-    return BaseModel._all(model);
+    if (where.length === 3) return BaseModel._all(model, where[0], where[1], where[2]) as T;
+    else if (where.length === 2) return BaseModel._all(model, where[0], where[1]) as T;
+    else if (where.length === 1) return BaseModel._all(model, where[0]) as T;
+    else return BaseModel._all(model) as T;
   }
   /**
-   *
+   * Calls a function on the table.
    * @param parameters A list of parameters to call the function.
    */
   static override call<T extends Model, U extends object = {}>(this: Newable<T>, parameters: U): T {
     const model = new this();
+    model.isMethodCall = true;
     return BaseModel._call(model, parameters);
+  }
+  /**
+   * Creates a transaction to be used with multiple models.
+   * @param models The models to use for the transaction.
+   */
+  static transaction<T extends Model>(this: Newable<T>, ...models: (Model | undefined)[]) {
+    const build = BaseModel._transaction(...(models.filter(model => model !== undefined) as Model[]));
+    const model = new this();
+    return {
+      commit: (options?: QueryOptions) => {
+        model.queryOptions = { ...model.queryOptions, ...options };
+        return model.request(build);
+      },
+    };
   }
   /**
    * Inserts items into the table using the model.
@@ -168,7 +221,10 @@ export abstract class Model extends BaseModel {
    * @param builder The builder to use to create the query. Defaults to `this`.
    */
   makeRequest<T extends FieldsResult<this>>(builder?: Table, options?: BuildOptions) {
-    options = { ...options, connection: this.connection };
+    if (typeof this.queryOptions.role === 'undefined' && this.role) this.queryOptions.role = this.role;
+    if (typeof this.queryOptions.connection === 'undefined' && this.connection)
+      this.queryOptions.connection = this.connection;
+    // console.debug('Query Options', this.queryOptions);
     const body = typeof builder === 'undefined' ? this.build(options) : this.build(builder, options);
     return this.request<T>(body);
   }
@@ -190,13 +246,13 @@ export abstract class Model extends BaseModel {
    * Users.all().get().pipe(tap(console.log)).subscribe();
    */
   get() {
-    const unique = typeof this.builder.primaryKey !== 'undefined' ? '_by_pk' : '';
-    const table = this.builder.alias.length > 0 ? this.builder.alias : `${this.table}${unique}`;
+    const unique = typeof this.tableRef.primaryKey !== 'undefined' ? '_by_pk' : '';
+    const table = this.tableRef.alias.length > 0 ? this.tableRef.alias : `${this.table}${unique}`;
     return (this.makeRequest() as Observable<FieldsResult<this>>).pipe(
       map((val: any): FieldsResult<this>[] => {
         return Array.isArray(val[table]) ? val[table] : [val[table]];
       }),
-      customFields(this.builder, this.attributes)
+      customFields(this.tableRef, this.attributes)
     ) as Observable<FieldsResult<this>[]>;
   }
   /**
@@ -214,7 +270,7 @@ export abstract class Model extends BaseModel {
    * @param resultsPerPage The number of results to return per page.
    */
   paginate<T>(config?: PaginationConfig) {
-    const table = this.builder.clone();
+    const table = this.tableRef.clone();
     return new Paginator<T>(table, config);
   }
   /**
@@ -228,7 +284,7 @@ export abstract class Model extends BaseModel {
    * Users.all().select('first', 'last').get().pipe(tap(console.log)).subscribe();
    */
   pluck<K extends keyof Fields<this>>(...fields: K[]) {
-    const { clone, table } = this.#clone(this.builder);
+    const { clone, table } = this.#clone(this.tableRef);
     clone.select(...(fields as string[]));
     return (this.makeRequest(clone) as Observable<FieldsResult<this>>).pipe(
       map(response => response[table]),
@@ -250,8 +306,8 @@ export abstract class Model extends BaseModel {
    * Users.find(1).first().pipe(tap(console.log)).subscribe();
    */
   first() {
-    const clone = this.builder.clone();
-    if (typeof this.builder.primaryKey === 'undefined') clone.limit(1);
+    const clone = this.tableRef.clone();
+    if (typeof this.tableRef.primaryKey === 'undefined' && this.isMethodCall === false) clone.limit(1);
     const unique = typeof clone.primaryKey !== 'undefined' ? '_by_pk' : '';
     const table = clone.alias.length > 0 ? clone.alias : `${this.table}${unique}`;
     return (this.makeRequest(clone) as Observable<FieldsResult<this>>).pipe(
@@ -276,7 +332,7 @@ export abstract class Model extends BaseModel {
    * Users.all().select('first').first().pipe(tap(console.log)).subscribe();
    */
   value<K extends keyof Fields<this>>(field: K) {
-    const { clone, table } = this.#clone(this.builder);
+    const { clone, table } = this.#clone(this.tableRef);
     clone.select(field as string);
     clone.limit(1);
     return (this.makeRequest(clone) as Observable<FieldsResult<this>>).pipe(
@@ -292,7 +348,7 @@ export abstract class Model extends BaseModel {
    * Users.all().values('first').pipe(tap(console.log)).subscribe();
    */
   values<K extends keyof Fields<this>>(field: K) {
-    const { clone, table } = this.#clone(this.builder);
+    const { clone, table } = this.#clone(this.tableRef);
     clone.select(field as string);
     return (this.makeRequest(clone) as Observable<FieldsResult<this>>).pipe(
       map(response => response?.[table]?.map((item: FieldsResult<this>) => item[field])),
@@ -306,7 +362,7 @@ export abstract class Model extends BaseModel {
    * Users.all().count().pipe(tap(console.log)).subscribe();
    */
   count() {
-    const { clone, table } = this.#clone(this.builder, `${this.table}_aggregate`);
+    const { clone, table } = this.#clone(this.tableRef, `${this.table}_aggregate`);
     clone.select(`aggregate{count}`);
     type Count = Observable<{ [key: string]: { aggregate: { count: number } } }>;
     return (this.makeRequest(clone) as Count).pipe(map(response => response[table].aggregate.count));
@@ -320,7 +376,7 @@ export abstract class Model extends BaseModel {
    * Users.all().max('age').pipe(tap(console.log)).subscribe();
    */
   max<K extends keyof Fields<this>>(...fields: K[]) {
-    const { clone, table } = this.#clone(this.builder, `${this.table}_aggregate`);
+    const { clone, table } = this.#clone(this.tableRef, `${this.table}_aggregate`);
     clone.select(`aggregate{max{${fields.join(',')}}}`);
     type Max = Observable<{ [key: string]: { aggregate: { max: { [key: string]: any } } } }>;
     return (this.makeRequest(clone) as Max).pipe(map(response => response[table].aggregate.max));
@@ -334,7 +390,7 @@ export abstract class Model extends BaseModel {
    * Users.all().min('age').pipe(tap(console.log)).subscribe();
    */
   min<K extends keyof Fields<this>>(...fields: K[]) {
-    const { clone, table } = this.#clone(this.builder, `${this.table}_aggregate`);
+    const { clone, table } = this.#clone(this.tableRef, `${this.table}_aggregate`);
     clone.select(`aggregate{min{${fields.join(',')}}}`);
     type Min = Observable<{ [key: string]: { aggregate: { min: { [key: string]: any } } } }>;
     return (this.makeRequest(clone) as Min).pipe(map(response => response[table].aggregate.min));
@@ -348,7 +404,7 @@ export abstract class Model extends BaseModel {
    * Users.all().sum('age').pipe(tap(console.log)).subscribe();
    */
   sum<K extends keyof Fields<this>>(...fields: K[]) {
-    const { clone, table } = this.#clone(this.builder, `${this.table}_aggregate`);
+    const { clone, table } = this.#clone(this.tableRef, `${this.table}_aggregate`);
     clone.select(`aggregate{sum{${fields.join(',')}}}`);
     type Sum = Observable<{ [key: string]: { aggregate: { sum: { [key: string]: any } } } }>;
     return (this.makeRequest(clone) as Sum).pipe(map(response => response[table].aggregate.sum));
@@ -362,7 +418,7 @@ export abstract class Model extends BaseModel {
    * Users.all().avg('age').subscribe();
    */
   avg<K extends keyof Fields<this>>(...fields: K[]) {
-    const { clone, table } = this.#clone(this.builder, `${this.table}_aggregate`);
+    const { clone, table } = this.#clone(this.tableRef, `${this.table}_aggregate`);
     clone.select(`aggregate{avg{${fields.join(',')}}}`);
     type Avg = Observable<{ [key: string]: { aggregate: { avg: { [key: string]: any } } } }>;
     return (this.makeRequest(clone) as Avg).pipe(map(response => response[table].aggregate.avg));
@@ -404,7 +460,7 @@ export abstract class Model extends BaseModel {
    */
   chunk(size: number) {
     // Clone the current builder and make changes on the clone.
-    const clone = this.builder.clone();
+    const clone = this.tableRef.clone();
     const table = clone.alias.length > 0 ? clone.alias : clone.table;
     clone.limit(size, 0);
 
@@ -456,8 +512,8 @@ export abstract class Model extends BaseModel {
    * ).subscribe();
    */
   watch() {
-    this.isSubscription = true;
-    const ref = new SubscriptionRef<this>(this, this.builder);
+    this.queryOptions.isSubscription = true;
+    const ref = new SubscriptionRef<this>(this, this.tableRef);
     type SubFields = FieldsResult<this>;
     (this.makeRequest(ref.clone, { type: 'subscription' }) as Observable<{ id: string; data: SubFields }>)
       .pipe(
@@ -473,7 +529,7 @@ export abstract class Model extends BaseModel {
    * Saves the data and gets the results. This will only return the fields that were affected by the insert, update, or delete.
    */
   save<K extends keyof Fields<this>>() {
-    const table = this.builder.alias.length > 0 ? this.builder.alias : `${this.buildType}_${this.table}`;
+    const table = this.tableRef.alias.length > 0 ? this.tableRef.alias : `${this.queryType}_${this.table}`;
     return (this.makeRequest() as Observable<FieldsResult<this>>).pipe(
       map((val: any): { [P in keyof K]: K[P] }[] => {
         return Array.isArray(val[table].returning) ? val[table].returning : [val[table].returning];

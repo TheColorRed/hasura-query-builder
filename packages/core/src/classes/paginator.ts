@@ -122,7 +122,7 @@ export class Paginator<T, U = { [key: string]: T[] }> {
     const qb = new QueryBuilder(clone, undefined, this.config?.model?.queryOptions);
     const r = qb.build();
     if (typeof global.window !== 'undefined') {
-      return request<{ [key: string]: { aggregate: { count: number } } }>(r).pipe(
+      return request<{ [key: string]: { aggregate: { count: number } } }>(r, clone.model?.queryOptions).pipe(
         tap(res => (this.#page.totalResults = res[name].aggregate.count)),
         tap(() => (this.#page.totalPages = Math.ceil(this.#page.totalResults / this.#page.resultsPerPage)))
       );
@@ -133,13 +133,13 @@ export class Paginator<T, U = { [key: string]: T[] }> {
   #getResults(table: Table): Observable<T[]> {
     const clone = table.clone();
     if (clone.model instanceof BaseModel) {
-      const builder = clone.model.getBuilder();
+      const builder = clone.model.getTable();
       if (builder.selects.length === 0 || typeof builder.selects === 'undefined') {
         clone.select(...(builder.model?.getFields(builder.model.fields) ?? []));
       }
     }
     const qb = new QueryBuilder(clone, undefined, this.config?.model?.queryOptions);
     const r = qb.build();
-    return request<U>(r).pipe(map((res: any) => res[clone.table]));
+    return request<U>(r, clone.model?.queryOptions).pipe(map((res: any) => res[clone.table]));
   }
 }

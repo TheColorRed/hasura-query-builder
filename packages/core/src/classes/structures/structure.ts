@@ -39,6 +39,12 @@ export interface QueryOptions {
   cache?: boolean;
   /** Additional headers to send with the query. */
   headers?: Record<string, string>;
+  /** The connection name to use. */
+  connection?: string;
+  /** The role to use. */
+  role?: string;
+  /** Whether or not this is a subscription. */
+  isSubscription?: boolean;
 }
 
 export interface QueryBody {
@@ -58,7 +64,6 @@ export interface QueryBody {
 }
 
 export interface BuildOptions {
-  connection?: string;
   nested?: boolean;
   // includeTable?: boolean;
   compact?: boolean;

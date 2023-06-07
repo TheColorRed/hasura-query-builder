@@ -1,4 +1,4 @@
-import { QueryBody } from '../structures/structure';
+import { QueryBody, QueryOptions } from '../structures/structure';
 import { ConnectionInfo, Connections } from './connections';
 
 export interface InfoResponse<H = { [key: string]: string }> {
@@ -11,6 +11,7 @@ export interface InfoResponse<H = { [key: string]: string }> {
 export class ConnectionManager {
   static getRequestInformation<H = { [key: string]: string }>(
     body: QueryBody,
+    options: QueryOptions,
     requestType: 'http' | 'socket' = 'http'
   ): InfoResponse<H> {
     // Check to make sure that the connections were setup.
@@ -21,7 +22,7 @@ export class ConnectionManager {
     const query = JSON.stringify(body);
 
     // Get the url from a connection name.
-    const connectionName = body.connection ?? 'default';
+    const connectionName = options.connection ?? 'default';
     const connection = Connections.get(connectionName);
     if (typeof connection === 'undefined') throw new Error(`Could not find the connection "${connectionName}"`);
     let url = connection instanceof URL ? connection : 'url' in connection ? connection.url : undefined;

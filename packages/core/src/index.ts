@@ -11,7 +11,7 @@ export * from './classes/query-builder';
 export * from './classes/query-cache';
 export * from './classes/raw';
 export { Direction } from './classes/structures/sections/order';
-export { QueryBody } from './classes/structures/structure';
+export { QueryBody, QueryOptions } from './classes/structures/structure';
 export * from './classes/subscription-ref';
 export * from './classes/table';
 export * from './interfaces/api';

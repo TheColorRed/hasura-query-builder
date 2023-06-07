@@ -42,9 +42,9 @@ export type ValueOf<T> = T[keyof T];
  * * `insert` &ndash; Inserts items into a database table.
  * * `update` &ndash; Updates items in a database table.
  * * `delete` &ndash; Deletes items from a database table.
- * * `upsert` &ndash; Inserts items into a database table, a conflict will result in an update.
+ * * `transaction` &ndash; Executes a group of queries or mutations as a transaction.
  */
-export type BuildType = 'select' | 'insert' | 'update' | 'delete' | 'upsert';
+export type QueryType = 'select' | 'insert' | 'update' | 'delete' | 'transaction';
 
 export interface BaseModel {
   /**
@@ -59,11 +59,13 @@ export interface BaseModel {
   /**
    * Fields that are generated at runtime for the model.
    *
-   * **Note:** These fields cannot be used at the database level.
+   * **Note:** These fields cannot be used at the database level, such as in a `where` clause.
    */
   attributes?: AttributesType<this>;
   /** Settings for the model. */
   settings?: Settings;
+  /** The Hasura role to use for the model. */
+  role?: string;
 }
 export abstract class BaseModel {
   /** The name of the table that this model relates to. */
@@ -71,23 +73,27 @@ export abstract class BaseModel {
   /** The fields that are within the table. */
   abstract readonly fields: Fields<any>;
   /** The builder that the model is working with. */
-  protected builder!: Table;
+  protected tableRef!: Table;
   /** The build type. */
-  private _buildType: BuildType = 'select';
+  private _queryType: QueryType = 'select';
   records?: InsertObjects | UpdateObjects;
+  /** What to do when there is a conflict. */
   conflict?: OnConflict;
-  queryOptions?: QueryOptions;
+  /** The options for the query. Note: This is only used in the root query. */
+  queryOptions: QueryOptions = {};
+  /** The fields that should be added that are not in the model. */
+  private addSelects: SelectField = [];
   /** The type of build (`select`, `insert`, `update`, `delete`, `upsert`). */
-  get buildType() {
-    return this._buildType;
+  get queryType() {
+    return this._queryType;
   }
   /** Whether or not this is a query (`select`). */
   get isQuery() {
-    return this.buildType === 'select';
+    return this.queryType === 'select';
   }
   /** Whether or not this is a mutation (`insert`, `update`, `delete`, `upsert`). */
   get isMutation() {
-    return this.buildType !== 'select';
+    return this.queryType !== 'select';
   }
   /**
    * @internal
@@ -110,8 +116,8 @@ export abstract class BaseModel {
       acc[val] = primary[idx] as string | number;
       return acc;
     }, {});
-    model.builder = new Table(`${model.table}_by_pk`).primary(map);
-    model.builder.model = model;
+    model.tableRef = new Table(`${model.table}_by_pk`).primary(map);
+    model.tableRef.model = model;
     return model;
   }
   /**
@@ -119,30 +125,57 @@ export abstract class BaseModel {
    * An empty table blueprint for all records.
    * @param model The model to use.
    */
-  protected static _all<T extends BaseModel>(model: T) {
-    model.builder = new Table(model.table);
-    model.builder.model = model;
+  protected static _all<T extends BaseModel, K extends keyof Fields<BaseModel>>(
+    model: T,
+    field: K,
+    key: string,
+    value: any
+  ): BaseModel;
+  protected static _all<T extends BaseModel, K extends keyof Fields<BaseModel>>(
+    model: T,
+    field: K,
+    value: Fields<BaseModel>[K]
+  ): BaseModel;
+  protected static _all<T extends BaseModel>(model: T, fields: HasuraWhere): BaseModel;
+  protected static _all<T extends BaseModel>(model: T): BaseModel;
+  protected static _all<T extends BaseModel>(model: T, ...where: [T, string, any] | [T, any] | [HasuraWhere] | []) {
+    model.tableRef = new Table(model.table);
+    model.tableRef.model = model;
+    if (where.length > 0) {
+      // @ts-ignore
+      model.tableRef.where(...where);
+    }
     return model;
   }
   /**
    * @internal
    * An empty table blueprint for calling a table as a function.
    * This is usually used for custom functions and procedures.
-   * @param model
+   * @param model The model to use to call the function.
    */
   protected static _call<T extends BaseModel, U extends object = {}>(model: T, parameters: U) {
-    model.builder = new Table(model.table);
-    model.builder.procedureParameters = new TableParams(parameters);
-    model.builder.model = model;
+    model.tableRef = new Table(model.table);
+    model.tableRef.procedureParameters = new TableParams(parameters);
+    model.tableRef.model = model;
     return model;
+  }
+  /**
+   * @internal
+   * Creates a transaction for the given models.
+   * @param models The models to create a transaction for.
+   */
+  protected static _transaction<T extends BaseModel>(...models: T[]) {
+    models.forEach(q => q.setTableInformation(q.tableRef));
+    const result = new QueryBuilder({ tables: models.map(q => q.tableRef), type: 'transaction' });
+    return result.build();
   }
   /**
    * @internal
    * An empty table blueprint for a single record.
    */
   protected static _first<T extends BaseModel>(model: T, field: string, value: any) {
-    model.builder = new Table(model.table).where({ [field]: { _eq: value } }).limit(1);
-    model.builder.model = model;
+    model.tableRef = new Table(model.table).where({ [field]: { _eq: value } }).limit(1);
+    model.tableRef.model = model;
     return model;
   }
   /**
@@ -162,9 +195,9 @@ export abstract class BaseModel {
     records: { [P in keyof Partial<K>]: Fields<T>[P] } | { [P in keyof Partial<K>]: Fields<T>[P] }[],
     onConflict?: InsertConflict
   ) {
-    model.builder = new Table(model.table);
-    model._buildType = 'insert';
-    model.builder.model = model;
+    model.tableRef = new Table(model.table);
+    model._queryType = 'insert';
+    model.tableRef.model = model;
     model.records = new InsertObjects(Array.isArray(records) ? records : [records]);
     model.conflict =
       typeof onConflict !== 'undefined' ? new OnConflict(onConflict.constraint, onConflict.fields) : undefined;
@@ -185,9 +218,9 @@ export abstract class BaseModel {
     model: T,
     records: { [P in keyof Partial<K>]: K[P] }
   ) {
-    model.builder = new Table(model.table);
-    model._buildType = 'update';
-    model.builder.model = model;
+    model.tableRef = new Table(model.table);
+    model._queryType = 'update';
+    model.tableRef.model = model;
     model.records = new UpdateObjects(records);
     return model;
   }
@@ -202,9 +235,9 @@ export abstract class BaseModel {
    * @param model The model to use.
    */
   protected static _delete<T extends BaseModel>(model: T) {
-    model.builder = new Table(model.table);
-    model._buildType = 'delete';
-    model.builder.model = model;
+    model.tableRef = new Table(model.table);
+    model._queryType = 'delete';
+    model.tableRef.model = model;
     return model;
   }
   /**
@@ -216,14 +249,14 @@ export abstract class BaseModel {
     const base = Object.assign(Object.create(Object.getPrototypeOf(this)), this) as T;
     // @ts-ignore
     base.table = name ?? this.table;
-    base.builder = base.builder.clone(name ?? this.table, alias);
+    base.tableRef = base.tableRef.clone(name ?? this.table, alias);
     return base;
   }
   /**
    * Gets the builder.
    */
-  getBuilder() {
-    return this.builder;
+  getTable() {
+    return this.tableRef;
   }
   /**
    * @internal
@@ -239,12 +272,11 @@ export abstract class BaseModel {
    */
   build(options?: BuildOptions): QueryBody;
   build(...args: [Table, object?] | [object?]) {
-    const builder = args[0] instanceof Table ? args[0] : this.builder;
-    builder.setBuildOptions({ ...(args[0] instanceof Table ? args[1] : args[0]) });
-    if (builder.selects.length === 0 || typeof builder.selects === 'undefined') {
-      builder.select(...this.getFields(this.fields));
-    }
-    return new QueryBuilder({ tables: builder, type: this._buildType, queryOptions: this.queryOptions }).build();
+    const table = args[0] instanceof Table ? args[0] : this.tableRef;
+    const buildOptions = (args[0] instanceof Table ? args[1] : args[0]) as object;
+    if (!table.model) throw new Error('Model not set on builder.');
+    this.setTableInformation(table, buildOptions);
+    return new QueryBuilder({ tables: table, type: this._queryType, queryOptions: this.queryOptions }).build();
   }
 
   /**
@@ -269,7 +301,7 @@ export abstract class BaseModel {
    */
   where(fields: HasuraWhere): this;
   where<T extends this>(...args: [T, string, any] | [T, any] | [HasuraWhere]) {
-    this.builder.where(...(args as [HasuraWhere]));
+    this.tableRef.where(...(args as [HasuraWhere]));
     return this;
   }
   /**
@@ -282,7 +314,7 @@ export abstract class BaseModel {
    * @param builder The callback for the group.
    */
   or(builder: WhereGroup) {
-    this.builder.or(builder);
+    this.tableRef.or(builder);
     return this;
   }
   /**
@@ -295,7 +327,7 @@ export abstract class BaseModel {
    * @param builder The callback for the group.
    */
   and(builder: WhereGroup) {
-    this.builder.and(builder);
+    this.tableRef.and(builder);
     return this;
   }
   /**
@@ -304,7 +336,7 @@ export abstract class BaseModel {
    * @param fields The field to compare.
    */
   whereTruthy<K extends keyof Fields<this>>(...fields: K[]) {
-    this.builder.whereTruthy(...(fields as string[]));
+    this.tableRef.whereTruthy(...(fields as string[]));
     return this;
   }
   /**
@@ -313,20 +345,46 @@ export abstract class BaseModel {
    * @param fields The field to compare.
    */
   whereFalsy<K extends keyof Fields<this>>(...fields: K[]) {
-    this.builder.whereFalsy(...(fields as string[]));
+    this.tableRef.whereFalsy(...(fields as string[]));
     return this;
   }
   /**
-   * Selects additional fields that are not defined in the model.
+   * Selects a custom list of fields. This will overwrite the fields defined on the model.
    * @param fields The additional fields to select on the model.
    */
   select(...fields: SelectField) {
-    this.builder.select(...fields);
+    this.tableRef.select(...fields);
     return this;
   }
-
+  /**
+   * Adds additional fields to the models select. This will not override the default fields but instead will add to them.
+   * @param fields The additional fields to select on the model.
+   */
+  addSelect(...fields: SelectField) {
+    this.addSelects.push(...fields);
+    return this;
+  }
+  /**
+   * Sets the order and direction of the query using a single field.
+   * @param field The field to order by.
+   * @param direction The direction to order by.
+   * @example
+   * Users.all().order('first', 'asc')
+   */
   order(field: string, direction: Direction): this;
+  /**
+   * Sets the order and direction of the query using multiple fields.
+   * @param order An object of fields and directions.
+   * @example
+   * Users.all().order({ first: 'asc', last: 'desc' })
+   */
   order(order: { [key: string]: Direction }): this;
+  /**
+   * Sets the order and direction of the query using multiple fields.
+   * @param order An array of objects of fields and directions.
+   * @example
+   * Users.all().order([{ first: 'asc' }, { last: 'desc' }])
+   */
   order(order: SortFields[]): this;
   order(...order: [{ [key: string]: Direction }] | [SortFields[]] | [string, Direction]) {
     let newOrder = order[0] as { [key: string]: Direction };
@@ -334,7 +392,7 @@ export abstract class BaseModel {
       const key = order[0];
       newOrder = { [key]: <Direction>order[1] };
     }
-    this.builder.order(newOrder);
+    this.tableRef.order(newOrder);
     return this;
   }
   /**
@@ -342,7 +400,7 @@ export abstract class BaseModel {
    * @param fields The fields to group by.
    */
   distinct(...fields: string[]) {
-    this.builder.distinct(...fields);
+    this.tableRef.distinct(...fields);
     return this;
   }
   /**
@@ -351,7 +409,7 @@ export abstract class BaseModel {
    * @param offset The offset to start at.
    */
   limit(limit: number, offset: number = 0) {
-    this.builder.limit(limit, offset);
+    this.tableRef.limit(limit, offset);
     return this;
   }
   /**
@@ -359,7 +417,7 @@ export abstract class BaseModel {
    * @param offset The offset to start at.
    */
   offset(offset: number) {
-    this.builder.offset(offset);
+    this.tableRef.offset(offset);
     return this;
   }
   /**
@@ -367,7 +425,7 @@ export abstract class BaseModel {
    * @param name The table alias.
    */
   alias(name: string) {
-    this.builder.alias = name;
+    this.tableRef.alias = name;
     return this;
   }
   /**
@@ -387,7 +445,7 @@ export abstract class BaseModel {
    * // }]
    */
   field<T extends Fields<this>, U>(callback: (row: T) => { [key: string]: U }) {
-    this.builder.callbackMap.push(callback as any);
+    this.tableRef.callbackMap.push(callback as any);
     return this;
   }
   /**
@@ -396,13 +454,13 @@ export abstract class BaseModel {
    * @param value The value for the field.
    */
   cursor<K extends keyof Fields<this>>(size: number, field: K, value: Fields<this>[K]) {
-    this.builder.cursor(size, field as string, value);
+    this.tableRef.cursor(size, field as string, value);
     return this;
   }
 
-  getFields(fields?: Fields<any>) {
+  getFields(fields: Fields<any>) {
     const data: { fields: string[]; tables: Table[] } = { fields: [], tables: [] };
-    Object.entries(this.fields).forEach(([key, builder]) => {
+    Object.entries(fields).forEach(([key, builder]) => {
       if (
         typeof builder === 'string' ||
         typeof builder === 'number' ||
@@ -412,41 +470,68 @@ export abstract class BaseModel {
         data.fields.push(key);
       // Return the table
       else if (builder instanceof Table) {
-        console.debug('table', builder);
         data.tables.push(builder);
       }
       // The builder is an instance of the BaseModel.
       // Add the fields to the existing builder if needed.
       else if (builder instanceof BaseModel) {
-        console.debug('model', builder);
-        if (builder.builder.selects.length === 0 || typeof builder.builder.selects === 'undefined') {
+        if (builder.tableRef.selects.length === 0 || typeof builder.tableRef.selects === 'undefined') {
           builder.select(...Object.keys(builder.fields));
         }
-        data.tables.push(builder.getBuilder());
+        data.tables.push(builder.getTable());
       }
       // The builder is just a reference to a class.
       // Create the class and add select fields if they haven't been set.
       else {
         // console.debug('class', builder);
         const builderInstance = (builder as any).all() as BaseModel;
-        builderInstance.builder.setBuildOptions({ nested: true, table: { name: key, alias: key } });
-        // i.alias(key);
-        if (builderInstance.builder.selects.length === 0 || typeof builderInstance.builder.selects === 'undefined') {
+        builderInstance.tableRef.setBuildOptions({ nested: true, table: { name: key, alias: key } });
+        if (builderInstance.tableRef.selects.length === 0 || typeof builderInstance.tableRef.selects === 'undefined') {
           const keys = Object.keys(builderInstance.fields) as (string | BaseModel)[];
           const entries = Object.entries(builderInstance.fields);
-          const tables: any[] = [];
           entries.forEach(([k, value]) => {
             if (value.prototype instanceof BaseModel) {
               const idx = keys.findIndex(key => k === key);
               const model = new value.prototype.constructor() as BaseModel;
-              model.builder = new Table(model.table);
-              model.select(...model.getFields());
+              model.tableRef = new Table(model.table);
+              model.select(...model.getFields(model.fields));
               idx > -1 && keys.splice(idx, 1, model);
             }
           });
           builderInstance.select(...keys);
         }
-        data.tables.push(builderInstance.getBuilder());
+        data.tables.push(builderInstance.getTable());
+      }
+    });
+    return [...data.fields, data.tables];
+  }
+
+  private setTableInformation(table: Table, buildOptions?: BuildOptions) {
+    const model = table.model!;
+    table.setBuildOptions({ ...buildOptions });
+
+    if (table.selects.length === 0 || typeof table.selects === 'undefined') {
+      const fields = model.getFields(model.fields);
+      table.select(...fields);
+    }
+    if (table instanceof Table && model.addSelects.length > 0) {
+      const fields = model.getAdditionalFields(model.addSelects);
+      table.select(...fields);
+    }
+  }
+
+  private getAdditionalFields(fields: SelectField) {
+    const data: { fields: string[]; tables: Table[] } = { fields: [], tables: [] };
+    fields.forEach(select => {
+      if (typeof select === 'string') {
+        data.fields.push(select);
+      } else if (select instanceof Table) {
+        data.tables.push(select);
+      } else if (select instanceof BaseModel) {
+        if (select.tableRef.selects.length === 0 || typeof select.tableRef.selects === 'undefined') {
+          select.select(...Object.keys(select.fields));
+        }
+        data.tables.push(select.getTable());
       }
     });
     return [...data.fields, data.tables];

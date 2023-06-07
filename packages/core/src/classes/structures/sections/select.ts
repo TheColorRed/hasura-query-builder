@@ -11,7 +11,7 @@ export interface SelectFields {
 export type SelectField = (string | BaseModel | (Table | typeof Model)[])[];
 
 export class Select implements Structure {
-  constructor(private readonly select: SelectField) {}
+  constructor(public readonly select: SelectField) {}
   private isTableArray(item: any): item is Table[] {
     return Array.isArray(item) && item.every((i: any) => i instanceof Table);
   }
@@ -30,12 +30,15 @@ export class Select implements Structure {
         });
         return acc.concat(items);
       } else if (field instanceof Model) {
-        const builder = field.getBuilder();
+        const builder = field.getTable();
         builder.setBuildOptions({ nested: true });
         return acc.concat(new QueryBuilder(builder).build().query);
+      } else if (field instanceof Table) {
+        field.setBuildOptions({ nested: true });
+        return acc.concat(new QueryBuilder(field).build().query);
       } else if (this.isBaseModelArray(field)) {
         const items = (field as BaseModel[]).map(model => {
-          const builder = model.getBuilder();
+          const builder = model.getTable();
           builder.setBuildOptions({ nested: true });
           return new QueryBuilder(builder).build().query;
         });

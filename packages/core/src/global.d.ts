@@ -15,13 +15,13 @@ interface CustomWindow extends Window {
    *
    * Makes a Hasura query or mutation.
    */
-  hasuraHttpRequest<T = unknown>(body: QueryBody): Observable<T>;
+  hasuraHttpRequest<T = unknown>(body: QueryBody, options?: RequestOptions): Observable<T>;
   /**
    * @internal
    *
    * Starts a Hasura query subscription.
    */
-  hasuraWsRequest<T = unknown>(body: QueryBody): Observable<{ id: string; data: T }>;
+  hasuraWsRequest<T = unknown>(body: QueryBody, options?: RequestOptions): Observable<{ id: string; data: T }>;
   /**
    * @internal
    *

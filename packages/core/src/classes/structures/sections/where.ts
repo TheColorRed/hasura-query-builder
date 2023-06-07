@@ -1,7 +1,7 @@
 import { Table } from '../../table';
 import { HasuraWhere, Structure, StructureResult } from '../structure';
 
-export type WhereGroup = (builder: Table) => Table;
+export type WhereGroup = (table: Table) => Table;
 
 export class Where implements Structure {
   constructor(private readonly where: HasuraWhere) {}
@@ -48,7 +48,8 @@ export class WhereOr implements Structure {
   }
   get(table: Table, idx: number): StructureResult {
     this.table.wheres = [];
-    const r = this.callback(this.table);
+    const clone = this.table.clone('_temp_');
+    const r = this.callback(clone);
 
     const where = { _or: [] } as { _or: any[] };
     r.wheres.map(w => w.get(table, idx)).forEach(itm => where._or.push(itm.vars));

@@ -14,8 +14,14 @@ export interface QueryParam {
 }
 
 export abstract class BaseQuery {
-  constructor(protected readonly builders: Table[], protected readonly operation: string = '') {}
-  protected tableData(builder: Table, idx: number) {
+  constructor(protected readonly tables: Table[], protected readonly operation: string = '') {}
+  /**
+   * @internal
+   * Build the query.
+   * @param builder The table builder.
+   * @param idx The index of the table in the query.
+   */
+  tableData(builder: Table, idx: number) {
     const select = builder.selects.map(s => s.get().query).join(',');
     const primaryKey = builder.primaryKey?.get(builder, idx);
     const where = builder.wheres.map(s => s.get(builder, idx));
@@ -55,7 +61,7 @@ export abstract class BaseQuery {
    * Get query parameter information.
    */
   protected rootQueryParamsList(): QueryParam[][] {
-    return this.builders.map((builder, idx) => {
+    return this.tables.map((builder, idx) => {
       return (
         [
           // A where can be added to a query many times unlike the others, so we access it differently.
@@ -149,12 +155,12 @@ export abstract class BaseQuery {
       ...(this.operation && { operationName: this.operation }),
       query: this.compact(
         `${prefix}
-          ${this.builders.map(query).join(',')}
+          ${this.tables.map(query).join(',')}
         ${prefix.length > 0 ? '}' : ''}`,
         options?.compact ?? true
       ),
       variables: queryParamsVariables,
-      connection: options?.connection ?? 'default',
+      // connection: options?.connection ?? 'default',
       queryOptions: options?.queryOptions,
     };
   }

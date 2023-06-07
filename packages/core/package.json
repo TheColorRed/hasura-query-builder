@@ -1,6 +1,6 @@
 {
   "name": "@hasura-query-builder/core",
-  "version": "1.0.2",
+  "version": "1.0.5",
   "private": false,
   "description": "Core library for Hasura Query Builder",
   "keywords": [
