@@ -147,20 +147,6 @@ export abstract class Model extends BaseModel {
     return BaseModel._call(model, parameters);
   }
   /**
-   * Creates a transaction to be used with multiple models.
-   * @param models The models to use for the transaction.
-   */
-  static transaction<T extends Model>(this: Newable<T>, ...models: (Model | undefined)[]) {
-    const build = BaseModel._transaction(...(models.filter(model => model !== undefined) as Model[]));
-    const model = new this();
-    return {
-      commit: (options?: QueryOptions) => {
-        model.queryOptions = { ...model.queryOptions, ...options };
-        return model.request(build);
-      },
-    };
-  }
-  /**
    * Inserts items into the table using the model.
    *
    * A few things to note:

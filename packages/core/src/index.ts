@@ -14,4 +14,5 @@ export { Direction } from './classes/structures/sections/order';
 export { QueryBody, QueryOptions } from './classes/structures/structure';
 export * from './classes/subscription-ref';
 export * from './classes/table';
+export * from './classes/transaction';
 export * from './interfaces/api';
